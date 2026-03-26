@@ -1,8 +1,14 @@
-import { templates, getTemplate, listTemplateIds } from "../src/templates.js";
+import {
+  templates,
+  templateCategories,
+  getTemplate,
+  getTemplatesByType,
+  listTemplateIds,
+} from "../src/templates.js";
 
 describe("templates registry", () => {
-  it("has 8 templates", () => {
-    expect(templates).toHaveLength(8);
+  it("has 9 templates", () => {
+    expect(templates).toHaveLength(9);
   });
 
   it("each template has required fields", () => {
@@ -11,6 +17,9 @@ describe("templates registry", () => {
       expect(t.name).toBeTruthy();
       expect(t.description).toBeTruthy();
       expect(["node", "go", "python"]).toContain(t.language);
+      expect(["api", "frontend", "fullstack", "monorepo", "worker"]).toContain(
+        t.type,
+      );
     }
   });
 
@@ -34,10 +43,41 @@ describe("templates registry", () => {
     expect(ids).toContain("monorepo-turbo");
     expect(ids).toContain("fullstack-nextjs");
     expect(ids).toContain("node-nestjs");
+    expect(ids).toContain("node-worker");
   });
 
   it("no duplicate template ids", () => {
     const ids = listTemplateIds();
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("template categories", () => {
+  it("has 5 categories", () => {
+    expect(templateCategories).toHaveLength(5);
+  });
+
+  it("every template belongs to a valid category", () => {
+    const categoryIds = templateCategories.map((c) => c.id);
+    for (const t of templates) {
+      expect(categoryIds).toContain(t.type);
+    }
+  });
+
+  it("getTemplatesByType filters correctly", () => {
+    const apis = getTemplatesByType("api");
+    expect(apis.length).toBeGreaterThanOrEqual(4);
+    expect(apis.every((t) => t.type === "api")).toBe(true);
+
+    const workers = getTemplatesByType("worker");
+    expect(workers).toHaveLength(1);
+    expect(workers[0].id).toBe("node-worker");
+  });
+
+  it("every category has at least one template", () => {
+    for (const cat of templateCategories) {
+      const filtered = getTemplatesByType(cat.id);
+      expect(filtered.length).toBeGreaterThanOrEqual(1);
+    }
   });
 });

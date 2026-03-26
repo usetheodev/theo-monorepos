@@ -38,13 +38,21 @@ export interface ScaffoldOptions {
   template: TemplateInfo;
   targetDir: string;
   styling?: StylingOption | null;
+  database?: boolean;
   skipInstall?: boolean;
   skipGit?: boolean;
 }
 
 export function scaffold(options: ScaffoldOptions): void {
-  const { projectName, template, targetDir, styling, skipInstall, skipGit } =
-    options;
+  const {
+    projectName,
+    template,
+    targetDir,
+    styling,
+    database,
+    skipInstall,
+    skipGit,
+  } = options;
 
   if (fs.existsSync(targetDir)) {
     const contents = fs.readdirSync(targetDir);
@@ -70,6 +78,10 @@ export function scaffold(options: ScaffoldOptions): void {
 
   if (styling) {
     applyStyling(targetDir, template, styling);
+  }
+
+  if (database) {
+    applyDatabase(targetDir, template);
   }
 
   if (!skipGit) {
@@ -164,6 +176,7 @@ function applyStyling(
     writeStylingConfig(appDir, styling);
     writeGlobalsCss(appDir, styling);
     updateLayout(appDir, styling);
+    updatePage(appDir, template, styling);
   }
 }
 
@@ -426,6 +439,7 @@ function updateLayout(appDir: string, styling: StylingOption): void {
 
   if (styling.id === "chakra") {
     updated = buildChakraLayout(content);
+    writeChakraProviders(appDir);
   } else if (styling.id === "mantine") {
     updated = buildMantineLayout(content);
   } else {
@@ -448,9 +462,7 @@ function buildChakraLayout(content: string): string {
     ? metadataMatch[0]
     : 'export const metadata = { title: "App", description: "Deployed with Theo" };';
 
-  return `"use client";
-
-import { ChakraProvider } from "@chakra-ui/react";
+  return `import { ChakraProviders } from "./providers";
 
 ${metadataBlock}
 
@@ -458,12 +470,26 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <ChakraProvider>{children}</ChakraProvider>
+        <ChakraProviders>{children}</ChakraProviders>
       </body>
     </html>
   );
 }
 `;
+}
+
+function writeChakraProviders(appDir: string): void {
+  fs.writeFileSync(
+    path.join(appDir, "src", "app", "providers.js"),
+    `"use client";
+
+import { ChakraProvider } from "@chakra-ui/react";
+
+export function ChakraProviders({ children }) {
+  return <ChakraProvider>{children}</ChakraProvider>;
+}
+`,
+  );
 }
 
 function buildMantineLayout(content: string): string {
@@ -492,4 +518,479 @@ export default function RootLayout({ children }) {
   );
 }
 `;
+}
+
+// --- Page Rewrite per Styling ---
+
+function updatePage(
+  appDir: string,
+  template: TemplateInfo,
+  styling: StylingOption,
+): void {
+  const pagePath = path.join(appDir, "src", "app", "page.js");
+  if (!fs.existsSync(pagePath)) return;
+
+  const isFullstack = template.id === "fullstack-nextjs";
+  const page = buildStyledPage(styling, isFullstack);
+  if (page) {
+    fs.writeFileSync(pagePath, page);
+  }
+}
+
+function buildStyledPage(
+  styling: StylingOption,
+  isFullstack: boolean,
+): string | null {
+  const itemsBlock = isFullstack
+    ? `
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/items")
+      .then((res) => res.json())
+      .then((data) => setItems(data.items));
+  }, []);`
+    : "";
+
+  const itemsList = isFullstack
+    ? buildItemsList(styling)
+    : "";
+
+  switch (styling.id) {
+    case "tailwind":
+    case "shadcn":
+    case "daisyui":
+      return buildTailwindPage(isFullstack, itemsBlock, itemsList, styling.id);
+    case "chakra":
+      return buildChakraPage(isFullstack, itemsBlock, itemsList);
+    case "mantine":
+      return buildMantinePage(isFullstack, itemsBlock, itemsList);
+    case "bootstrap":
+      return buildBootstrapPage(isFullstack, itemsBlock, itemsList);
+    case "bulma":
+      return buildBulmaPage(isFullstack, itemsBlock, itemsList);
+    default:
+      return null;
+  }
+}
+
+function buildItemsList(styling: StylingOption): string {
+  switch (styling.id) {
+    case "tailwind":
+    case "shadcn":
+    case "daisyui":
+      return `
+        <h2 className="text-xl font-semibold mt-6 mb-2">Items</h2>
+        <ul className="list-disc list-inside space-y-1">
+          {items.map((item) => (
+            <li key={item.id} className="text-gray-700">{item.name}</li>
+          ))}
+        </ul>`;
+    case "chakra":
+      return `
+        <Heading size="md" mt={6} mb={2}>Items</Heading>
+        <UnorderedList spacing={1}>
+          {items.map((item) => (
+            <ListItem key={item.id}>{item.name}</ListItem>
+          ))}
+        </UnorderedList>`;
+    case "mantine":
+      return `
+        <Title order={2} mt="lg" mb="sm">Items</Title>
+        <List spacing="xs">
+          {items.map((item) => (
+            <List.Item key={item.id}>{item.name}</List.Item>
+          ))}
+        </List>`;
+    case "bootstrap":
+      return `
+        <h2 className="h4 mt-4 mb-2">Items</h2>
+        <ul className="list-group">
+          {items.map((item) => (
+            <li key={item.id} className="list-group-item">{item.name}</li>
+          ))}
+        </ul>`;
+    case "bulma":
+      return `
+        <h2 className="title is-4 mt-4">Items</h2>
+        <div className="content">
+          <ul>
+            {items.map((item) => (
+              <li key={item.id}>{item.name}</li>
+            ))}
+          </ul>
+        </div>`;
+    default:
+      return "";
+  }
+}
+
+function buildTailwindPage(
+  isFullstack: boolean,
+  itemsBlock: string,
+  itemsList: string,
+  variant: string,
+): string {
+  const useClient = isFullstack ? `"use client";\n\nimport { useEffect, useState } from "react";\n\n` : "";
+
+  let badgeClass = "inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded";
+  if (variant === "daisyui") {
+    badgeClass = "badge badge-primary";
+  }
+
+  return `${useClient}export default function Home() {${itemsBlock}
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-gray-50">
+      <div className="max-w-md text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          Deployed with Theo
+        </h1>
+        <p className="text-gray-600 mb-6">
+          Edit <code className="bg-gray-200 px-1.5 py-0.5 rounded text-sm font-mono">src/app/page.js</code> to get started.
+        </p>
+        <span className="${badgeClass}">
+          ${variant === "daisyui" ? "daisyUI" : variant === "shadcn" ? "shadcn/ui" : "Tailwind CSS"}
+        </span>${itemsList}
+      </div>
+    </main>
+  );
+}
+`;
+}
+
+function buildChakraPage(
+  isFullstack: boolean,
+  itemsBlock: string,
+  itemsList: string,
+): string {
+  const imports = isFullstack
+    ? `import { useEffect, useState } from "react";
+import { Box, Heading, Text, Code, Badge, VStack, UnorderedList, ListItem } from "@chakra-ui/react";`
+    : `import { Box, Heading, Text, Code, Badge, VStack } from "@chakra-ui/react";`;
+
+  return `"use client";
+
+${imports}
+
+export default function Home() {${itemsBlock}
+  return (
+    <Box minH="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.50" p={8}>
+      <VStack spacing={4} textAlign="center" maxW="md">
+        <Heading size="xl" color="gray.900">
+          Deployed with Theo
+        </Heading>
+        <Text color="gray.600">
+          Edit <Code>src/app/page.js</Code> to get started.
+        </Text>
+        <Badge colorScheme="blue">Chakra UI</Badge>${itemsList}
+      </VStack>
+    </Box>
+  );
+}
+`;
+}
+
+function buildMantinePage(
+  isFullstack: boolean,
+  itemsBlock: string,
+  itemsList: string,
+): string {
+  const imports = isFullstack
+    ? `import { useEffect, useState } from "react";
+import { Container, Title, Text, Code, Badge, Stack, List } from "@mantine/core";`
+    : `import { Container, Title, Text, Code, Badge, Stack } from "@mantine/core";`;
+
+  return `"use client";
+
+${imports}
+
+export default function Home() {${itemsBlock}
+  return (
+    <Container size="sm" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Stack align="center" gap="md">
+        <Title order={1}>Deployed with Theo</Title>
+        <Text c="dimmed">
+          Edit <Code>src/app/page.js</Code> to get started.
+        </Text>
+        <Badge variant="light" color="blue">Mantine</Badge>${itemsList}
+      </Stack>
+    </Container>
+  );
+}
+`;
+}
+
+function buildBootstrapPage(
+  isFullstack: boolean,
+  itemsBlock: string,
+  itemsList: string,
+): string {
+  const useClient = isFullstack ? `"use client";\n\nimport { useEffect, useState } from "react";\n\n` : "";
+
+  return `${useClient}export default function Home() {${itemsBlock}
+  return (
+    <main className="d-flex align-items-center justify-content-center min-vh-100 bg-light p-4">
+      <div className="text-center" style={{ maxWidth: "32rem" }}>
+        <h1 className="display-5 fw-bold text-dark mb-3">
+          Deployed with Theo
+        </h1>
+        <p className="text-muted mb-4">
+          Edit <code>src/app/page.js</code> to get started.
+        </p>
+        <span className="badge bg-primary">Bootstrap</span>${itemsList}
+      </div>
+    </main>
+  );
+}
+`;
+}
+
+function buildBulmaPage(
+  isFullstack: boolean,
+  itemsBlock: string,
+  itemsList: string,
+): string {
+  const useClient = isFullstack ? `"use client";\n\nimport { useEffect, useState } from "react";\n\n` : "";
+
+  return `${useClient}export default function Home() {${itemsBlock}
+  return (
+    <main className="hero is-fullheight is-light">
+      <div className="hero-body">
+        <div className="container has-text-centered">
+          <h1 className="title is-1">
+            Deployed with Theo
+          </h1>
+          <p className="subtitle">
+            Edit <code>src/app/page.js</code> to get started.
+          </p>
+          <span className="tag is-primary is-medium">Bulma</span>${itemsList}
+        </div>
+      </div>
+    </main>
+  );
+}
+`;
+}
+
+// --- Database Layer ---
+
+function applyDatabase(targetDir: string, template: TemplateInfo): void {
+  writeEnvExample(targetDir);
+
+  switch (template.language) {
+    case "node":
+      applyPrisma(targetDir, template);
+      break;
+    case "go":
+      applyGorm(targetDir);
+      break;
+    case "python":
+      applySqlalchemy(targetDir);
+      break;
+  }
+}
+
+function writeEnvExample(targetDir: string): void {
+  fs.writeFileSync(
+    path.join(targetDir, ".env.example"),
+    `DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"\n`,
+  );
+}
+
+// --- Prisma (Node.js) ---
+
+function applyPrisma(targetDir: string, template: TemplateInfo): void {
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+
+  pkg.dependencies = {
+    ...pkg.dependencies,
+    "@prisma/client": "^6.0.0",
+  };
+  pkg.devDependencies = {
+    ...pkg.devDependencies,
+    prisma: "^6.0.0",
+  };
+  pkg.scripts = {
+    ...pkg.scripts,
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+  };
+
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const prismaDir = path.join(targetDir, "prisma");
+  fs.mkdirSync(prismaDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(prismaDir, "schema.prisma"),
+    `generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+`,
+  );
+
+  const isTypeScript = template.id === "node-nestjs";
+  const libDir = path.join(targetDir, "src", "lib");
+  fs.mkdirSync(libDir, { recursive: true });
+
+  if (isTypeScript) {
+    fs.writeFileSync(
+      path.join(libDir, "db.ts"),
+      `import { PrismaClient } from "@prisma/client";
+
+export const prisma = new PrismaClient();
+`,
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(libDir, "db.js"),
+      `const { PrismaClient } = require("@prisma/client");
+
+const prisma = new PrismaClient();
+
+module.exports = { prisma };
+`,
+    );
+  }
+}
+
+// --- GORM (Go) ---
+
+function applyGorm(targetDir: string): void {
+  const goModPath = path.join(targetDir, "go.mod");
+  let goMod = fs.readFileSync(goModPath, "utf-8");
+
+  goMod += `
+require (
+\tgorm.io/gorm v1.25.12
+\tgorm.io/driver/postgres v1.5.11
+)
+`;
+
+  fs.writeFileSync(goModPath, goMod);
+
+  const dbDir = path.join(targetDir, "internal", "database");
+  fs.mkdirSync(dbDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(dbDir, "database.go"),
+    `package database
+
+import (
+\t"fmt"
+\t"os"
+
+\t"gorm.io/driver/postgres"
+\t"gorm.io/gorm"
+)
+
+var DB *gorm.DB
+
+func Connect() error {
+\tdsn := os.Getenv("DATABASE_URL")
+\tif dsn == "" {
+\t\tdsn = "host=localhost user=postgres password=postgres dbname=mydb port=5432 sslmode=disable"
+\t}
+
+\tdb, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+\tif err != nil {
+\t\treturn fmt.Errorf("failed to connect to database: %w", err)
+\t}
+
+\tDB = db
+\treturn nil
+}
+`,
+  );
+
+  const modelsDir = path.join(targetDir, "internal", "models");
+  fs.mkdirSync(modelsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(modelsDir, "user.go"),
+    `package models
+
+import "time"
+
+type User struct {
+\tID        uint      \`json:"id" gorm:"primaryKey"\`
+\tEmail     string    \`json:"email" gorm:"uniqueIndex"\`
+\tName      string    \`json:"name"\`
+\tCreatedAt time.Time \`json:"created_at"\`
+\tUpdatedAt time.Time \`json:"updated_at"\`
+}
+`,
+  );
+}
+
+// --- SQLAlchemy (Python) ---
+
+function applySqlalchemy(targetDir: string): void {
+  const reqPath = path.join(targetDir, "requirements.txt");
+  let reqs = fs.readFileSync(reqPath, "utf-8");
+
+  reqs += `sqlalchemy>=2.0.0\npsycopg2-binary>=2.9.0\nalembic>=1.13.0\n`;
+
+  fs.writeFileSync(reqPath, reqs);
+
+  fs.writeFileSync(
+    path.join(targetDir, "database.py"),
+    `import os
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://user:password@localhost:5432/mydb"
+)
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+`,
+  );
+
+  fs.writeFileSync(
+    path.join(targetDir, "models.py"),
+    `from sqlalchemy import Column, DateTime, Integer, String, func
+
+from database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+`,
+  );
 }

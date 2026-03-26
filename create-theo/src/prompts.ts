@@ -1,22 +1,32 @@
-import { input, select } from "@inquirer/prompts";
-import { templates, type TemplateInfo } from "./templates.js";
+import { input, select, confirm } from "@inquirer/prompts";
+import {
+  templates,
+  templateCategories,
+  getTemplatesByType,
+  type TemplateInfo,
+  type TemplateType,
+} from "./templates.js";
 import { sanitizeProjectName, validateProjectName } from "./validate.js";
 import {
   stylingOptions,
   hasFrontend,
   type StylingOption,
 } from "./styling.js";
+import { supportsDatabase, getOrmForLanguage } from "./database.js";
 
 export interface UserChoices {
   projectName: string;
   template: TemplateInfo;
   styling: StylingOption | null;
+  database: boolean;
 }
 
 export async function promptUser(
   initialName?: string,
   templateId?: string,
   stylingId?: string,
+  databaseArg?: boolean,
+  isCI?: boolean,
 ): Promise<UserChoices> {
   const rawName =
     initialName ??
@@ -39,15 +49,29 @@ export async function promptUser(
       );
     }
   } else {
-    const chosen = await select({
-      message: "Pick a template:",
-      choices: templates.map((t) => ({
-        name: `${t.name} — ${t.description}`,
-        value: t.id,
+    const chosenType = await select({
+      message: "What do you want to build?",
+      choices: templateCategories.map((c) => ({
+        name: `${c.name} — ${c.description}`,
+        value: c.id,
       })),
     });
 
-    template = templates.find((t) => t.id === chosen)!;
+    const filtered = getTemplatesByType(chosenType as TemplateType);
+
+    if (filtered.length === 1) {
+      template = filtered[0];
+    } else {
+      const chosen = await select({
+        message: "Pick a template:",
+        choices: filtered.map((t) => ({
+          name: `${t.name} — ${t.description}`,
+          value: t.id,
+        })),
+      });
+
+      template = templates.find((t) => t.id === chosen)!;
+    }
   }
 
   let styling: StylingOption | null = null;
@@ -61,7 +85,7 @@ export async function promptUser(
           `Unknown styling option: "${stylingId}". Available: ${valid}`,
         );
       }
-    } else {
+    } else if (!isCI) {
       const chosenStyling = await select({
         message: "Pick a styling option:",
         choices: stylingOptions.map((s) => ({
@@ -73,10 +97,24 @@ export async function promptUser(
       styling = stylingOptions.find((s) => s.id === chosenStyling)!;
     }
 
-    if (styling.id === "none") {
+    if (styling?.id === "none") {
       styling = null;
     }
   }
 
-  return { projectName, template, styling };
+  let database = false;
+
+  if (supportsDatabase(template.type)) {
+    if (databaseArg !== undefined) {
+      database = databaseArg;
+    } else if (!isCI) {
+      const orm = getOrmForLanguage(template.language);
+      database = await confirm({
+        message: `Add a PostgreSQL database? (via ${orm.name})`,
+        default: false,
+      });
+    }
+  }
+
+  return { projectName, template, styling, database };
 }

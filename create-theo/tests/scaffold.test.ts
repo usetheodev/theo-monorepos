@@ -141,6 +141,7 @@ describe("scaffold", () => {
           name: "test",
           description: "test",
           language: "node",
+          type: "api",
           defaultPort: 3000,
         },
         targetDir,
@@ -176,7 +177,7 @@ describe("scaffold", () => {
     expect(fs.existsSync(path.join(targetDir, "next.config.js"))).toBe(true);
   });
 
-  it("scaffolds all 8 templates without error", () => {
+  it("scaffolds all 9 templates without error", () => {
     const templateIds = [
       "node-express",
       "node-fastify",
@@ -186,6 +187,7 @@ describe("scaffold", () => {
       "monorepo-turbo",
       "fullstack-nextjs",
       "node-nestjs",
+      "node-worker",
     ];
 
     for (const id of templateIds) {
@@ -312,8 +314,11 @@ describe("scaffold with styling", () => {
     });
 
     const layout = fs.readFileSync(path.join(targetDir, "src", "app", "layout.js"), "utf-8");
-    expect(layout).toContain("ChakraProvider");
-    expect(layout).toContain("use client");
+    expect(layout).toContain("ChakraProviders");
+
+    const providers = fs.readFileSync(path.join(targetDir, "src", "app", "providers.js"), "utf-8");
+    expect(providers).toContain("use client");
+    expect(providers).toContain("ChakraProvider");
 
     const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
     expect(pkg.dependencies["@chakra-ui/react"]).toBeDefined();

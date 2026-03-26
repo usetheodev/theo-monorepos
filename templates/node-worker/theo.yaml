@@ -1,0 +1,9 @@
+version: 1
+project: "{{project-name}}"
+
+apps:
+  worker:
+    path: .
+    framework: custom
+    type: worker
+    port: 3000
