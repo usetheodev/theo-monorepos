@@ -12,3 +12,6 @@
 - Flag `--database` (`-d`) to add database via CLI without prompt
 - Database setup instructions in post-scaffold output
 - Sample `User` model and connection boilerplate for each ORM
+- CI workflow: tests on Node 18/20/22, template validation, security audit
+- Release workflow: npm publish on version tag with provenance + post-publish smoke test
+- Weekly validation workflow: scheduled Monday checks for template integrity and dependency vulnerabilities

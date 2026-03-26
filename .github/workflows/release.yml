@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: create-theo/package-lock.json
+
+      - name: Install dependencies
+        working-directory: create-theo
+        run: npm ci
+
+      - name: Build
+        working-directory: create-theo
+        run: npm run build
+
+      - name: Run tests
+        working-directory: create-theo
+        run: npm test
+
+      - name: Validate templates
+        run: CI=true bash scripts/validate-templates.sh
+
+      - name: Publish
+        working-directory: create-theo
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  smoke-test:
+    name: Post-publish Smoke Test
+    runs-on: ubuntu-latest
+    needs: publish
+
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Wait for npm propagation
+        run: sleep 30
+
+      - name: Scaffold and verify node-express
+        run: |
+          npx create-theo@latest smoke-express --template node-express
+          cd smoke-express
+          test -f theo.yaml
+          test -f package.json
+          test -f src/index.js
+          grep -q '"smoke-express"' theo.yaml
+
+      - name: Scaffold and verify go-api
+        run: |
+          npx create-theo@latest smoke-go --template go-api
+          cd smoke-go
+          test -f theo.yaml
+          test -f main.go
+          grep -q '"smoke-go"' theo.yaml
+
+      - name: Scaffold and verify python-fastapi
+        run: |
+          npx create-theo@latest smoke-python --template python-fastapi
+          cd smoke-python
+          test -f theo.yaml
+          test -f main.py
+          grep -q '"smoke-python"' theo.yaml
