@@ -538,7 +538,7 @@ templates/node-nestjs/
 | 1 — Base Templates | T1.1-T1.7 | 5 deployable templates | Done (T1.8 DO pending) |
 | 2 — create-theo CLI | T2.1-T2.7 | `npx create-theo` works | Done (29/29 tests) |
 | 3 — Advanced Templates | T3.1-T3.6 | +3 templates (monorepo, fullstack, NestJS) | Done (8/8 validation) |
-| 4 — Polish + Publish | T4.1-T4.6 | Published on npm | T4.1-T4.2 done, T4.3-T4.6 pending (npm publish) |
+| 4 — Polish + Publish | T4.1-T4.6 | Published on npm | T4.1-T4.3 done, T4.4-T4.6 pending (npm publish) |
 
 ---
 

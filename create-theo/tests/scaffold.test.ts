@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { scaffold } from "../src/scaffold.js";
-import { getTemplate } from "../src/templates.js";
+import { getTemplate, listTemplateIds } from "../src/templates.js";
 import { getStylingOption } from "../src/styling.js";
 
 function createTempDir(): string {
@@ -112,6 +112,40 @@ describe("scaffold", () => {
     expect(main).not.toContain("{{project-name}}");
   });
 
+  it("replaces {{project-name}} in Cargo.toml for rust-axum", () => {
+    const template = getTemplate("rust-axum")!;
+    const targetDir = path.join(tempDir, "my-rust-api");
+
+    scaffold({
+      projectName: "my-rust-api",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const cargo = fs.readFileSync(path.join(targetDir, "Cargo.toml"), "utf-8");
+    expect(cargo).toContain('name = "my-rust-api"');
+    expect(cargo).not.toContain("{{project-name}}");
+  });
+
+  it("replaces {{project-name}} in settings.gradle.kts for java-spring", () => {
+    const template = getTemplate("java-spring")!;
+    const targetDir = path.join(tempDir, "my-java-api");
+
+    scaffold({
+      projectName: "my-java-api",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const settings = fs.readFileSync(path.join(targetDir, "settings.gradle.kts"), "utf-8");
+    expect(settings).toContain('rootProject.name = "my-java-api"');
+    expect(settings).not.toContain("{{project-name}}");
+  });
+
   it("throws if target directory is not empty", () => {
     const targetDir = path.join(tempDir, "existing");
     fs.mkdirSync(targetDir);
@@ -177,18 +211,8 @@ describe("scaffold", () => {
     expect(fs.existsSync(path.join(targetDir, "next.config.js"))).toBe(true);
   });
 
-  it("scaffolds all 9 templates without error", () => {
-    const templateIds = [
-      "node-express",
-      "node-fastify",
-      "node-nextjs",
-      "go-api",
-      "python-fastapi",
-      "monorepo-turbo",
-      "fullstack-nextjs",
-      "node-nestjs",
-      "node-worker",
-    ];
+  it("scaffolds all 14 templates without error", () => {
+    const templateIds = listTemplateIds();
 
     for (const id of templateIds) {
       const template = getTemplate(id)!;
@@ -208,6 +232,112 @@ describe("scaffold", () => {
       expect(yaml).not.toContain("{{project-name}}");
       expect(yaml).toContain(`project: "${id}"`);
     }
+  });
+
+  it("rust-axum has production-ready files", () => {
+    const template = getTemplate("rust-axum")!;
+    const targetDir = path.join(tempDir, "prod-rust");
+
+    scaffold({
+      projectName: "prod-rust",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "Cargo.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "src", "main.rs"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "rustfmt.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("rust-toolchain");
+  });
+
+  it("java-spring has production-ready files", () => {
+    const template = getTemplate("java-spring")!;
+    const targetDir = path.join(tempDir, "prod-java");
+
+    scaffold({
+      projectName: "prod-java",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "build.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "settings.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(
+      path.join(targetDir, "src", "main", "java", "com", "theo", "app", "Application.java"),
+    )).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("setup-java");
+  });
+
+  it("ruby-sinatra has production-ready files", () => {
+    const template = getTemplate("ruby-sinatra")!;
+    const targetDir = path.join(tempDir, "prod-ruby");
+
+    scaffold({
+      projectName: "prod-ruby",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "Gemfile"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "app.rb"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "config.ru"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "config", "puma.rb"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("setup-ruby");
+  });
+
+  it("monorepo-go has correct structure", () => {
+    const template = getTemplate("monorepo-go")!;
+    const targetDir = path.join(tempDir, "mono-go");
+
+    scaffold({
+      projectName: "mono-go",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "go.work"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "main.go"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "main.go"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "pkg", "shared", "shared.go"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "Makefile"))).toBe(true);
+  });
+
+  it("monorepo-python has correct structure", () => {
+    const template = getTemplate("monorepo-python")!;
+    const targetDir = path.join(tempDir, "mono-py");
+
+    scaffold({
+      projectName: "mono-py",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "pyproject.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "main.py"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "worker.py"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "packages", "shared", "src", "shared", "__init__.py"))).toBe(true);
+
+    const rootToml = fs.readFileSync(path.join(targetDir, "pyproject.toml"), "utf-8");
+    expect(rootToml).toContain("[tool.uv.workspace]");
   });
 });
 
@@ -524,11 +654,7 @@ describe("scaffold with styling", () => {
   });
 
   it("all templates include CI workflow", () => {
-    const templateIds = [
-      "node-express", "node-fastify", "node-nextjs", "go-api",
-      "python-fastapi", "monorepo-turbo", "fullstack-nextjs",
-      "node-nestjs", "node-worker",
-    ];
+    const templateIds = listTemplateIds();
 
     for (const id of templateIds) {
       const template = getTemplate(id)!;
@@ -544,5 +670,118 @@ describe("scaffold with styling", () => {
 
       expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
     }
+  });
+});
+
+describe("scaffold with combined features", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = createTempDir();
+  });
+
+  afterEach(() => {
+    cleanup(tempDir);
+  });
+
+  it("fullstack-nextjs with styling=tailwind AND database=true", () => {
+    const template = getTemplate("fullstack-nextjs")!;
+    const styling = getStylingOption("tailwind")!;
+    const targetDir = path.join(tempDir, "combo-fullstack");
+
+    scaffold({
+      projectName: "combo-fullstack",
+      template,
+      targetDir,
+      styling,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    // Verify styling was applied
+    expect(fs.existsSync(path.join(targetDir, "tailwind.config.js"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "postcss.config.js"))).toBe(true);
+    const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
+    expect(pkg.devDependencies.tailwindcss).toBeDefined();
+
+    // Verify database was applied
+    expect(fs.existsSync(path.join(targetDir, "docker-compose.yml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".env"))).toBe(true);
+    const compose = fs.readFileSync(path.join(targetDir, "docker-compose.yml"), "utf-8");
+    expect(compose).toContain("postgres");
+
+    // Verify prisma (Node fullstack template gets prisma)
+    expect(pkg.dependencies.prisma || pkg.devDependencies.prisma || pkg.dependencies["@prisma/client"]).toBeDefined();
+  });
+
+  it("node-express with database + redis + auth-jwt addons combined", () => {
+    const template = getTemplate("node-express")!;
+    const targetDir = path.join(tempDir, "combo-express");
+
+    scaffold({
+      projectName: "combo-express",
+      template,
+      targetDir,
+      database: true,
+      addons: ["redis", "auth-jwt"],
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
+
+    // Verify database (Prisma)
+    expect(pkg.dependencies["@prisma/client"] || pkg.devDependencies.prisma).toBeDefined();
+
+    // Verify redis
+    expect(pkg.dependencies.ioredis).toBeDefined();
+    expect(fs.existsSync(path.join(targetDir, "src", "lib", "redis.js"))).toBe(true);
+
+    // Verify auth-jwt
+    expect(pkg.dependencies.jsonwebtoken).toBeDefined();
+    expect(fs.existsSync(path.join(targetDir, "src", "middleware", "auth.js"))).toBe(true);
+
+    // Verify docker-compose has both postgres and redis
+    const compose = fs.readFileSync(path.join(targetDir, "docker-compose.yml"), "utf-8");
+    expect(compose).toContain("postgres");
+    expect(compose).toContain("redis");
+
+    // Verify .env has all vars
+    const env = fs.readFileSync(path.join(targetDir, ".env"), "utf-8");
+    expect(env).toContain("DATABASE_URL");
+    expect(env).toContain("REDIS_URL");
+    expect(env).toContain("JWT_SECRET");
+  });
+
+  it("monorepo-turbo with styling=tailwind AND database=true", () => {
+    const template = getTemplate("monorepo-turbo")!;
+    const styling = getStylingOption("tailwind")!;
+    const targetDir = path.join(tempDir, "combo-turbo");
+
+    scaffold({
+      projectName: "combo-turbo",
+      template,
+      targetDir,
+      styling,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    // Verify styling applied to web app only
+    const webDir = path.join(targetDir, "apps", "web");
+    expect(fs.existsSync(path.join(webDir, "tailwind.config.js"))).toBe(true);
+    const webPkg = JSON.parse(fs.readFileSync(path.join(webDir, "package.json"), "utf-8"));
+    expect(webPkg.devDependencies.tailwindcss).toBeDefined();
+
+    // Verify root does NOT have tailwind
+    const rootPkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
+    expect(rootPkg.devDependencies?.tailwindcss).toBeUndefined();
+
+    // Verify database was applied
+    expect(fs.existsSync(path.join(targetDir, "docker-compose.yml"))).toBe(true);
+    const compose = fs.readFileSync(path.join(targetDir, "docker-compose.yml"), "utf-8");
+    expect(compose).toContain("postgres");
   });
 });

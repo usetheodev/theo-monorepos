@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  Production-ready project scaffolding for Node.js, Go, and Python. Deploy anywhere.
+  Production-ready project scaffolding for Node.js, Go, Python, Rust, Java, and Ruby. Deploy anywhere.
 </p>
 
 <p align="center">
@@ -54,10 +54,15 @@ bun create theo
 | `node-worker` | Node.js | Background Worker | 3000 |
 | `go-api` | Go stdlib (net/http) | API | 8080 |
 | `python-fastapi` | Python + FastAPI | API | 8000 |
+| `rust-axum` | Rust + Axum + Tokio | API | 8080 |
+| `java-spring` | Java + Spring Boot | API | 8080 |
+| `ruby-sinatra` | Ruby + Sinatra + Puma | API | 4567 |
 | `fullstack-nextjs` | Next.js + API Routes | Fullstack | 3000 |
 | `monorepo-turbo` | Turborepo (Express + Next.js) | Monorepo | 3001 / 3002 |
+| `monorepo-go` | Go Workspaces (API + Worker) | Monorepo | 8080 / 8081 |
+| `monorepo-python` | uv Workspace (FastAPI + Worker) | Monorepo | 8000 / 8001 |
 
-Every template is production-ready out of the box: CORS, structured JSON logging, error handling, graceful shutdown, health endpoint (`GET /health`), ESLint + Prettier, and a CI workflow.
+Every template is production-ready out of the box: CORS, structured JSON logging, error handling, graceful shutdown, health endpoint (`GET /health`), linting, and a CI workflow.
 
 ## CLI Options
 
@@ -65,8 +70,8 @@ Every template is production-ready out of the box: CORS, structured JSON logging
 |------|-------------|
 | `--template`, `-t` | Skip template prompt (`node-express`, `go-api`, etc.) |
 | `--styling`, `-s` | Styling for frontend templates (`tailwind`, `shadcn`, `daisyui`, etc.) |
-| `--database`, `-d` | Add PostgreSQL with ORM (Prisma, GORM, or SQLAlchemy) |
-| `--add`, `-a` | Add modules: `redis`, `auth`, `queue` (comma-separated) |
+| `--database`, `-d` | Add PostgreSQL with ORM (Prisma, GORM, SQLAlchemy, Diesel, Spring Data JPA, or Sequel) |
+| `--add`, `-a` | Add modules: `redis`, `auth-jwt`, `auth-oauth`, `queue` (comma-separated) |
 | `--help` | Show help |
 
 ```bash
@@ -77,10 +82,13 @@ npm create theo@latest
 npm create theo@latest my-api --template go-api
 
 # With database + modules
-npm create theo@latest my-app -t node-express -d --add redis,auth
+npm create theo@latest my-app -t node-express -d --add redis,auth-jwt
 
 # Full stack: database + Redis + Auth + Queue
-npm create theo@latest my-app -t node-express -d --add redis,auth,queue
+npm create theo@latest my-app -t node-express -d --add redis,auth-jwt,queue
+
+# With OAuth/OIDC instead of JWT
+npm create theo@latest my-app -t go-api --add auth-oauth
 
 # CI mode (no prompts, no install, no git init)
 CI=true npx create-theo my-app --template node-express
@@ -92,17 +100,21 @@ Composable modules added at scaffold time via `--add` or interactive checkbox pr
 
 | Module | What it generates | Languages |
 |--------|-------------------|-----------|
-| `redis` | Redis client + connection helper + docker-compose service | Node.js, Go, Python |
-| `auth` | JWT middleware + token generation helpers | Node.js, Go, Python |
-| `queue` | BullMQ queue + worker setup (auto-includes Redis) | Node.js only |
+| `redis` | Redis client + connection helper + docker-compose service | Node.js, Go, Python, Rust, Java, Ruby |
+| `auth-jwt` | JWT middleware + token generation helpers | Node.js, Go, Python, Rust, Java, Ruby |
+| `auth-oauth` | OAuth/OIDC token validation middleware | Node.js, Go, Python, Rust, Java, Ruby |
+| `queue` | Job queue + worker setup (auto-includes Redis) | Node.js (BullMQ), Go (Asynq), Python (arq) |
+
+`auth-jwt` and `auth-oauth` are mutually exclusive — pick one or the other.
 
 ### Generated per language
 
-| Module | Node.js | Go | Python |
-|--------|---------|-----|--------|
-| Redis | `src/lib/redis.js` + ioredis | `internal/cache/redis.go` + go-redis | `cache.py` + redis |
-| Auth | `src/middleware/auth.js` + jsonwebtoken | `internal/auth/auth.go` + golang-jwt | `auth.py` + pyjwt |
-| Queue | `src/lib/queue.js` + bullmq | — | — |
+| Module | Node.js | Go | Python | Rust | Java | Ruby |
+|--------|---------|-----|--------|------|------|------|
+| Redis | ioredis | go-redis | redis-py | redis crate | Spring Data Redis | redis gem |
+| Auth JWT | jsonwebtoken | golang-jwt | pyjwt | jsonwebtoken crate | JJWT | ruby-jwt |
+| Auth OAuth | openid-client | go-oidc | authlib | openidconnect | Spring OAuth2 | omniauth |
+| Queue | BullMQ | Asynq | arq | — | — | — |
 
 Framework-specific variants: Fastify uses `src/plugins/auth.js` with fastify-plugin, NestJS uses `src/guards/auth.guard.ts` with `@Injectable`.
 
@@ -115,6 +127,9 @@ Pass `--database` to get a fully configured database layer:
 | Node.js | Prisma | Schema, client, migration scripts |
 | Go | GORM | Connection helper, User model |
 | Python | SQLAlchemy | Engine, session, User model |
+| Rust | Diesel | Connection helper, config |
+| Java | Spring Data JPA | Entity, Repository, auto-DDL |
+| Ruby | Sequel | Connection, User model |
 
 All database setups include:
 - `docker-compose.yml` with Postgres 16 (healthcheck, persistent volume)
@@ -125,15 +140,15 @@ When combined with `--add redis`, both Postgres and Redis appear in the same `do
 
 ## What's Included in Every Template
 
-| Feature | Node.js | Go | Python |
-|---------|---------|-----|--------|
-| CORS | `cors` / `@fastify/cors` | stdlib middleware | `CORSMiddleware` (built-in) |
-| Structured logging | `pino-http` (JSON) | `log/slog` (JSON) | stdlib `logging` (JSON) |
-| Error handling | Central error middleware + 404 | Recovery + error middleware | Global exception handler |
-| Graceful shutdown | SIGTERM/SIGINT handlers | `http.Server.Shutdown` | FastAPI lifespan |
-| Linting | ESLint 9 + Prettier | Makefile (go vet/fmt) | ruff (pyproject.toml) |
-| CI | GitHub Actions workflow | GitHub Actions workflow | GitHub Actions workflow |
-| Health check | `GET /health` | `GET /health` | `GET /health` |
+| Feature | Node.js | Go | Python | Rust | Java | Ruby |
+|---------|---------|-----|--------|------|------|------|
+| CORS | `cors` / `@fastify/cors` | stdlib middleware | `CORSMiddleware` | `tower-http` | `WebMvcConfigurer` | Sinatra headers |
+| Structured logging | `pino-http` (JSON) | `log/slog` (JSON) | stdlib `logging` (JSON) | `tracing` | Logback JSON | Logger JSON |
+| Error handling | Central middleware + 404 | Recovery middleware | Exception handler | Axum fallback | `@ControllerAdvice` | Sinatra `error` block |
+| Graceful shutdown | SIGTERM/SIGINT | `http.Server.Shutdown` | FastAPI lifespan | `tokio::signal` | Spring `shutdown: graceful` | Puma workers |
+| Linting | ESLint 9 + Prettier | Makefile (go vet/fmt) | ruff (pyproject.toml) | rustfmt + clippy | Gradle build | RuboCop |
+| CI | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions |
+| Health check | `GET /health` | `GET /health` | `GET /health` | `GET /health` | `GET /health` | `GET /health` |
 
 ## Why create-theo?
 
@@ -180,6 +195,12 @@ npm test
 # Watch mode
 npm run dev
 ```
+
+## Known Limitations
+
+- **Queue addon**: Node.js, Go, Python only
+- **OAuth addon**: Node.js, Go, Python, Java only
+- **Styling**: Frontend templates only (node-nextjs, fullstack-nextjs, monorepo-turbo)
 
 ## License
 

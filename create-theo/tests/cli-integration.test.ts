@@ -77,7 +77,7 @@ describe("CLI integration", () => {
     expect(fs.existsSync(path.join(projectDir, "theo.yaml"))).toBe(true);
   });
 
-  it("scaffolds all 9 templates via CLI without errors", () => {
+  it("scaffolds all 14 templates via CLI without errors", () => {
     const templateIds = [
       "node-express",
       "node-fastify",
@@ -88,6 +88,11 @@ describe("CLI integration", () => {
       "fullstack-nextjs",
       "node-nestjs",
       "node-worker",
+      "rust-axum",
+      "java-spring",
+      "ruby-sinatra",
+      "monorepo-go",
+      "monorepo-python",
     ];
 
     for (const id of templateIds) {

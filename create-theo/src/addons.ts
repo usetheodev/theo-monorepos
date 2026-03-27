@@ -1,6 +1,6 @@
 import type { TemplateType } from "./templates.js";
 
-export type AddonId = "redis" | "auth" | "queue";
+export type AddonId = "redis" | "auth-jwt" | "auth-oauth" | "queue";
 
 export interface AddonInfo {
   id: AddonId;
@@ -9,9 +9,10 @@ export interface AddonInfo {
 }
 
 export const addons: AddonInfo[] = [
-  { id: "redis", name: "Redis", description: "Cache with ioredis" },
-  { id: "auth", name: "Auth (JWT)", description: "JWT authentication middleware" },
-  { id: "queue", name: "Queue (BullMQ)", description: "Background job queue" },
+  { id: "redis", name: "Redis", description: "Cache with Redis client" },
+  { id: "auth-jwt", name: "Auth (JWT)", description: "JWT authentication middleware" },
+  { id: "auth-oauth", name: "Auth (OAuth/OIDC)", description: "OAuth 2.0 / OpenID Connect authentication" },
+  { id: "queue", name: "Queue", description: "Background job queue" },
 ];
 
 export function getAvailableAddons(
@@ -22,12 +23,13 @@ export function getAvailableAddons(
     switch (addon.id) {
       case "redis":
         return templateType === "api" || templateType === "worker";
-      case "auth":
+      case "auth-jwt":
+      case "auth-oauth":
         return templateType === "api";
       case "queue":
         return (
           (templateType === "api" || templateType === "worker") &&
-          language === "node"
+          ["node", "go", "python"].includes(language)
         );
       default:
         return false;
@@ -41,6 +43,12 @@ export function supportsAddons(templateType: TemplateType): boolean {
 
 export function resolveAddonDependencies(selected: AddonId[]): AddonId[] {
   const result = [...selected];
+
+  // auth-jwt and auth-oauth are mutually exclusive
+  if (result.includes("auth-jwt") && result.includes("auth-oauth")) {
+    throw new Error("Cannot select both JWT and OAuth auth. Pick one.");
+  }
+
   if (result.includes("queue") && !result.includes("redis")) {
     result.unshift("redis");
   }
