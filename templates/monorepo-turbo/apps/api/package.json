@@ -4,10 +4,19 @@
   "private": true,
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "lint": "eslint src/",
+    "format": "prettier --write ."
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.21.0",
+    "pino-http": "^10.0.0",
     "@{{project-name}}/shared": "*"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "@eslint/js": "^9.0.0",
+    "prettier": "^3.4.0"
   }
 }

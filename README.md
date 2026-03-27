@@ -64,6 +64,7 @@ Every template ships with a health endpoint (`GET /health`), `PORT` env support,
 | Flag | Description |
 |------|-------------|
 | `--template`, `-t` | Skip template prompt (`node-express`, `go-api`, etc.) |
+| `--styling`, `-s` | Styling option for frontend templates (`tailwind`, `shadcn`, `daisyui`, etc.) |
 | `--database`, `-d` | Add database layer (Prisma, GORM, or SQLAlchemy) |
 | `--help` | Show help |
 
@@ -116,7 +117,7 @@ bash scripts/validate-templates.sh
 # Install and build the CLI
 cd create-theo && npm install && npm run build
 
-# Run tests (68 tests across 5 suites)
+# Run tests (84 tests across 7 suites)
 npm test
 
 # Watch mode
