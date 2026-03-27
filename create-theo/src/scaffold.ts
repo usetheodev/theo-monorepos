@@ -104,7 +104,11 @@ function copyDir(src: string, dest: string, projectName: string): void {
       if (entry.name === "node_modules") continue;
       copyDir(srcPath, destPath, projectName);
     } else {
-      copyFile(srcPath, destPath, projectName);
+      const finalDestPath =
+        entry.name === "gitignore"
+          ? path.join(dest, ".gitignore")
+          : destPath;
+      copyFile(srcPath, finalDestPath, projectName);
     }
   }
 }
@@ -126,6 +130,7 @@ function isTextFile(ext: string, basename: string): boolean {
   return (
     TEXT_EXTENSIONS.has(ext) ||
     TEXT_EXTENSIONS.has("." + basename) ||
+    basename === "gitignore" ||
     basename === "Dockerfile" ||
     basename === "Procfile" ||
     basename === "Makefile"
