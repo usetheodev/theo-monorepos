@@ -1,78 +1,128 @@
-# theo-monorepos
+<p align="center">
+  <a href="https://usetheo.dev">
+    <h1 align="center">create-theo</h1>
+  </a>
+</p>
 
-Starter templates for [Theo](https://usetheo.dev) — deploy any stack in under 5 minutes.
+<p align="center">
+  Scaffold a production-ready project and deploy it to Kubernetes — no YAML, no Docker, no cluster config.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/create-theo"><img src="https://img.shields.io/npm/v/create-theo.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/create-theo"><img src="https://img.shields.io/npm/dm/create-theo.svg" alt="monthly downloads" /></a>
+  <a href="https://github.com/usetheodev/theo-monorepos/blob/main/LICENSE"><img src="https://img.shields.io/github/license/usetheodev/theo-monorepos.svg" alt="license" /></a>
+</p>
+
+<p align="center">
+  <code>npm create theo@latest</code>
+</p>
+
+---
 
 ## Quick Start
 
 ```bash
 npm create theo@latest
 cd my-project
-theo login
 theo deploy
+```
+
+Pick a stack, answer a few prompts, and get a live URL. Zero Kubernetes knowledge required.
+
+### Other package managers
+
+```bash
+# yarn
+yarn create theo
+
+# pnpm
+pnpm create theo
+
+# bun
+bun create theo
 ```
 
 ## Templates
 
-| Template | Stack | Type |
-|----------|-------|------|
-| `node-express` | Node.js + Express | API server |
-| `node-fastify` | Node.js + Fastify | API server |
-| `node-nextjs` | Next.js (App Router) | Frontend (SSR) |
-| `go-api` | Go + net/http (stdlib) | API server |
-| `python-fastapi` | Python + FastAPI + Uvicorn | API server |
-| `monorepo-turbo` | Turborepo (Express API + Next.js) | Monorepo |
-| `fullstack-nextjs` | Next.js with API routes + CRUD | Fullstack |
-| `node-nestjs` | NestJS with modules | API server |
+| Template | Stack | Type | Default Port |
+|----------|-------|------|:------------:|
+| `node-express` | Node.js + Express | API | 3000 |
+| `node-fastify` | Node.js + Fastify | API | 3000 |
+| `node-nextjs` | Next.js (App Router) | Frontend / SSR | 3000 |
+| `node-nestjs` | NestJS | API | 3000 |
+| `node-worker` | Node.js | Background Worker | 3000 |
+| `go-api` | Go stdlib (net/http) | API | 8080 |
+| `python-fastapi` | Python + FastAPI | API | 8000 |
+| `fullstack-nextjs` | Next.js + API Routes | Fullstack | 3000 |
+| `monorepo-turbo` | Turborepo (Express + Next.js) | Monorepo | 3001 / 3002 |
 
-## CLI Flags
+Every template ships with a health endpoint (`GET /health`), `PORT` env support, and a `theo.yaml` ready for deploy.
+
+## CLI Options
+
+| Flag | Description |
+|------|-------------|
+| `--template`, `-t` | Skip template prompt (`node-express`, `go-api`, etc.) |
+| `--database`, `-d` | Add database layer (Prisma, GORM, or SQLAlchemy) |
+| `--help` | Show help |
 
 ```bash
-# Interactive (prompts for name and template)
+# Interactive (prompts for everything)
 npm create theo@latest
 
 # Non-interactive
-npm create theo@latest my-app --template node-express
+npm create theo@latest my-api --template go-api
 
-# CI mode (requires both flags)
-CI=true npx create-theo my-app --template go-api
+# With database
+npm create theo@latest my-app --template node-express --database
+
+# CI mode (no prompts, no install, no git init)
+CI=true npx create-theo my-app --template node-express
 ```
 
-## Using a Template Directly
+## Why create-theo?
 
-Each template is a standalone project. Copy one and deploy:
+- **Zero config to production.** Every template deploys as-is with `theo deploy`. No Dockerfile, no Kubernetes manifests, no CI/CD pipeline to set up.
+- **Real projects, not toy examples.** Templates include health checks, structured error handling, environment-based config, and proper `.gitignore` — the things you always add manually.
+- **Database-ready.** Pass `--database` and get a connected ORM with a sample model — Prisma for Node.js, GORM for Go, SQLAlchemy for Python.
+- **Any stack.** Node.js, Go, Python, monorepos, fullstack — pick what you know. Theo handles the rest.
+
+## Prerequisites
+
+- **Node.js 18+** (required to run `create-theo`)
+- **[Theo CLI](https://usetheo.dev)** (required to deploy)
+
+## Contributing
+
+We welcome contributions! Whether it's a new template, a bug fix, or documentation improvement.
+
+### Adding a template
+
+1. Create `templates/<template-id>/` with all required files
+2. Include `theo.yaml`, `GET /health`, `PORT` env support, `.gitignore`, and `README.md`
+3. Use `{{project-name}}` as the placeholder everywhere the project name appears
+4. Register it in `create-theo/src/templates.ts`
+5. Run the validation suite:
 
 ```bash
-cp -r templates/node-express my-project
-cd my-project
-# Edit theo.yaml — set your project name
-theo login
-theo deploy
-```
-
-## Template Requirements
-
-Every template follows these rules:
-
-1. `theo.yaml` with `version: 1` and valid project config
-2. `GET /health` endpoint returning `{ "status": "ok" }`
-3. Respects `PORT` environment variable
-4. `.gitignore` with sensible defaults
-5. Deployable with `theo deploy` — zero config needed
-6. Minimal dependencies — nothing unnecessary
-
-## Validation
-
-```bash
+cd create-theo && npm install && npm test
 bash scripts/validate-templates.sh
 ```
 
-Scaffolds every template, verifies structure, and checks for unreplaced placeholders.
+### Development
 
-## Contributing a Template
+```bash
+# Install and build the CLI
+cd create-theo && npm install && npm run build
 
-1. Create a directory under `templates/`
-2. Follow the template requirements above
-3. Use `{{project-name}}` as placeholder in `theo.yaml`, `package.json`, `go.mod`
-4. Add a `README.md` with: install, dev, deploy instructions
-5. Add template to `create-theo/src/templates.ts`
-6. Run `bash scripts/validate-templates.sh` — must pass
+# Run tests (68 tests across 5 suites)
+npm test
+
+# Watch mode
+npm run dev
+```
+
+## License
+
+[MIT](./LICENSE)
