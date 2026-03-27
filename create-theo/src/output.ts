@@ -1,7 +1,14 @@
 import chalk from "chalk";
 import type { TemplateInfo } from "./templates.js";
 import type { StylingOption } from "./styling.js";
+import type { AddonId } from "./addons.js";
 import { getOrmForLanguage } from "./database.js";
+
+const ADDON_LABELS: Record<AddonId, string> = {
+  redis: "Redis (ioredis)",
+  auth: "Auth (JWT)",
+  queue: "Queue (BullMQ)",
+};
 
 export function printSuccess(
   projectName: string,
@@ -9,6 +16,7 @@ export function printSuccess(
   template: TemplateInfo,
   styling?: StylingOption | null,
   database?: boolean,
+  addons?: AddonId[],
 ): void {
   console.log();
   console.log(
@@ -27,25 +35,34 @@ export function printSuccess(
     console.log(chalk.dim(`  Database: PostgreSQL (${orm.name})`));
   }
 
+  if (addons && addons.length > 0) {
+    console.log(
+      chalk.dim(`  Modules: ${addons.map((a) => ADDON_LABELS[a]).join(", ")}`),
+    );
+  }
+
   console.log();
-  console.log(chalk.bold("  Next steps:"));
+  console.log(chalk.bold("  Get started:"));
   console.log(chalk.cyan(`    cd ${projectName}`));
-  console.log(
-    chalk.cyan("    theo login") + chalk.dim("        # authenticate (first time only)"),
-  );
-  console.log(
-    chalk.cyan("    theo deploy") + chalk.dim("       # deploy to production"),
-  );
   console.log();
 
-  const devInstructions = getDevInstructions(template, database);
-  if (devInstructions) {
+  const devInstr = getDevInstructions(template, database);
+  if (devInstr) {
     console.log(chalk.bold("  Local development:"));
-    for (const line of devInstructions) {
+    for (const line of devInstr) {
       console.log(chalk.dim(`    ${line}`));
     }
     console.log();
   }
+
+  console.log(chalk.bold("  Deploy:"));
+  console.log(
+    chalk.cyan("    theo deploy") + chalk.dim("           # deploy with Theo (https://usetheo.dev)"),
+  );
+  console.log(
+    chalk.dim("    docker build .") + chalk.dim("        # or use Docker, Railway, Fly.io, etc."),
+  );
+  console.log();
 
   if (database) {
     const dbInstructions = getDatabaseInstructions(template);

@@ -1,4 +1,4 @@
-import { input, select, confirm } from "@inquirer/prompts";
+import { input, select, confirm, checkbox } from "@inquirer/prompts";
 import {
   templates,
   templateCategories,
@@ -13,12 +13,19 @@ import {
   type StylingOption,
 } from "./styling.js";
 import { supportsDatabase, getOrmForLanguage } from "./database.js";
+import {
+  getAvailableAddons,
+  resolveAddonDependencies,
+  supportsAddons,
+  type AddonId,
+} from "./addons.js";
 
 export interface UserChoices {
   projectName: string;
   template: TemplateInfo;
   styling: StylingOption | null;
   database: boolean;
+  addons: AddonId[];
 }
 
 export async function promptUser(
@@ -26,6 +33,7 @@ export async function promptUser(
   templateId?: string,
   stylingId?: string,
   databaseArg?: boolean,
+  addArg?: string,
   isCI?: boolean,
 ): Promise<UserChoices> {
   const rawName =
@@ -116,5 +124,25 @@ export async function promptUser(
     }
   }
 
-  return { projectName, template, styling, database };
+  let selectedAddons: AddonId[] = [];
+
+  if (supportsAddons(template.type)) {
+    const available = getAvailableAddons(template.type, template.language);
+
+    if (addArg) {
+      selectedAddons = addArg.split(",").map((s) => s.trim()) as AddonId[];
+    } else if (!isCI && available.length > 0) {
+      selectedAddons = await checkbox({
+        message: "Add optional modules:",
+        choices: available.map((a) => ({
+          name: `${a.name} — ${a.description}`,
+          value: a.id,
+        })),
+      });
+    }
+
+    selectedAddons = resolveAddonDependencies(selectedAddons);
+  }
+
+  return { projectName, template, styling, database, addons: selectedAddons };
 }
