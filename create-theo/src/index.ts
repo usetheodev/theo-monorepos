@@ -9,6 +9,7 @@ import { scaffold, installNodeDeps } from "./scaffold.js";
 import { printSuccess } from "./output.js";
 import { getTemplate, listTemplateIds } from "./templates.js";
 import { getStylingOption, listStylingIds } from "./styling.js";
+import { listAddonIds } from "./addons.js";
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
       template: { type: "string", short: "t" },
       styling: { type: "string", short: "s" },
       database: { type: "boolean", short: "d" },
+      add: { type: "string", short: "a" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -31,6 +33,7 @@ async function main(): Promise<void> {
   const templateArg = values.template as string | undefined;
   const stylingArg = values.styling as string | undefined;
   const databaseArg = values.database as boolean | undefined;
+  const addArg = values.add as string | undefined;
 
   const isCI = process.env.CI === "true" || process.env.CI === "1";
 
@@ -58,11 +61,23 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const { projectName, template, styling, database } = await promptUser(
+  if (addArg) {
+    const validAddons = listAddonIds();
+    for (const id of addArg.split(",")) {
+      if (!validAddons.includes(id.trim())) {
+        console.error(chalk.red(`Error: Unknown addon "${id.trim()}".`));
+        console.error(chalk.dim(`Available addons: ${validAddons.join(", ")}`));
+        process.exit(1);
+      }
+    }
+  }
+
+  const { projectName, template, styling, database, addons } = await promptUser(
     nameArg,
     templateArg,
     stylingArg,
     databaseArg,
+    addArg,
     isCI,
   );
   const targetDir = path.resolve(process.cwd(), projectName);
@@ -81,6 +96,7 @@ async function main(): Promise<void> {
       targetDir,
       styling,
       database,
+      addons,
       skipInstall: true,
       skipGit: isCI,
     });
@@ -95,7 +111,7 @@ async function main(): Promise<void> {
       spinner.succeed(chalk.green("Done!"));
     }
 
-    printSuccess(projectName, targetDir, template, styling, database);
+    printSuccess(projectName, targetDir, template, styling, database, addons);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (!isCI) {

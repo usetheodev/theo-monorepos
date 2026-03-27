@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import type { TemplateInfo } from "./templates.js";
 import type { StylingOption } from "./styling.js";
+import type { AddonId } from "./addons.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,7 @@ export interface ScaffoldOptions {
   targetDir: string;
   styling?: StylingOption | null;
   database?: boolean;
+  addons?: AddonId[];
   skipInstall?: boolean;
   skipGit?: boolean;
 }
@@ -50,6 +52,7 @@ export function scaffold(options: ScaffoldOptions): void {
     targetDir,
     styling,
     database,
+    addons = [],
     skipInstall,
     skipGit,
   } = options;
@@ -82,6 +85,23 @@ export function scaffold(options: ScaffoldOptions): void {
 
   if (database) {
     applyDatabase(targetDir, template);
+  }
+
+  if (addons.includes("redis")) {
+    applyRedis(targetDir, template);
+  }
+  if (addons.includes("auth")) {
+    applyAuth(targetDir, template);
+  }
+  if (addons.includes("queue")) {
+    applyQueue(targetDir, template);
+  }
+
+  // Write combined docker-compose and env files
+  const needsRedis = addons.includes("redis") || addons.includes("queue");
+  const hasAuth = addons.includes("auth");
+  if (database || needsRedis || hasAuth) {
+    writeInfraFiles(targetDir, !!database, needsRedis, hasAuth);
   }
 
   writeCI(targetDir, template);
@@ -928,10 +948,6 @@ jobs:
 // --- Database Layer ---
 
 function applyDatabase(targetDir: string, template: TemplateInfo): void {
-  writeEnvExample(targetDir);
-  writeDockerCompose(targetDir);
-  writeDotEnv(targetDir);
-
   switch (template.language) {
     case "node":
       applyPrisma(targetDir, template);
@@ -945,16 +961,22 @@ function applyDatabase(targetDir: string, template: TemplateInfo): void {
   }
 }
 
-function writeEnvExample(targetDir: string): void {
-  fs.writeFileSync(
-    path.join(targetDir, ".env.example"),
-    `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mydb?schema=public"\n`,
-  );
-}
+// --- Infrastructure Files (docker-compose + env) ---
 
-function writeDockerCompose(targetDir: string): void {
-  const content = `services:
-  postgres:
+function writeInfraFiles(
+  targetDir: string,
+  hasDatabase: boolean,
+  hasRedis: boolean,
+  hasAuth = false,
+): void {
+  const envVars: Record<string, string> = {};
+  const services: string[] = [];
+  const volumes: string[] = [];
+
+  if (hasDatabase) {
+    envVars.DATABASE_URL =
+      "postgresql://postgres:postgres@localhost:5432/mydb?schema=public";
+    services.push(`  postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -969,20 +991,481 @@ function writeDockerCompose(targetDir: string): void {
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 5`);
+    volumes.push("  pgdata:");
+  }
 
-volumes:
-  pgdata:
-`;
+  if (hasRedis) {
+    envVars.REDIS_URL = "redis://localhost:6379";
+    services.push(`  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5`);
+  }
 
-  fs.writeFileSync(path.join(targetDir, "docker-compose.yml"), content);
+  if (hasAuth) {
+    envVars.JWT_SECRET = "change-me-in-production";
+  }
+
+  // Write docker-compose.yml
+  if (services.length === 0) {
+    // Auth only — no docker services, just env files
+    const envContent =
+      Object.entries(envVars)
+        .map(([k, v]) => `${k}="${v}"`)
+        .join("\n") + "\n";
+    fs.writeFileSync(path.join(targetDir, ".env"), envContent);
+    fs.writeFileSync(path.join(targetDir, ".env.example"), envContent);
+    return;
+  }
+  let compose = "services:\n" + services.join("\n\n") + "\n";
+  if (volumes.length > 0) {
+    compose += "\nvolumes:\n" + volumes.join("\n") + "\n";
+  }
+  fs.writeFileSync(path.join(targetDir, "docker-compose.yml"), compose);
+
+  // Write .env and .env.example
+  const envContent =
+    Object.entries(envVars)
+      .map(([k, v]) => `${k}="${v}"`)
+      .join("\n") + "\n";
+  fs.writeFileSync(path.join(targetDir, ".env"), envContent);
+  fs.writeFileSync(path.join(targetDir, ".env.example"), envContent);
 }
 
-function writeDotEnv(targetDir: string): void {
+// --- Addon Stubs (Redis, Auth, Queue) ---
+
+function applyRedis(targetDir: string, template: TemplateInfo): void {
+  switch (template.language) {
+    case "node":
+      applyRedisNode(targetDir, template);
+      break;
+    case "go":
+      applyRedisGo(targetDir);
+      break;
+    case "python":
+      applyRedisPython(targetDir);
+      break;
+  }
+}
+
+function applyRedisNode(targetDir: string, template: TemplateInfo): void {
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = readPackageJson(pkgPath);
+  pkg.dependencies = {
+    ...(pkg.dependencies as Record<string, string>),
+    ioredis: "^5.0.0",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const libDir = path.join(targetDir, "src", "lib");
+  fs.mkdirSync(libDir, { recursive: true });
+
+  const isTypeScript = template.id === "node-nestjs";
+  if (isTypeScript) {
+    fs.writeFileSync(
+      path.join(libDir, "redis.ts"),
+      `import Redis from "ioredis";
+
+export const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+`,
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(libDir, "redis.js"),
+      `const Redis = require("ioredis");
+
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+
+module.exports = { redis };
+`,
+    );
+  }
+}
+
+function applyRedisGo(targetDir: string): void {
+  const goModPath = path.join(targetDir, "go.mod");
+  let goMod = fs.readFileSync(goModPath, "utf-8");
+  goMod += `\nrequire github.com/redis/go-redis/v9 v9.7.0\n`;
+  fs.writeFileSync(goModPath, goMod);
+
+  const cacheDir = path.join(targetDir, "internal", "cache");
+  fs.mkdirSync(cacheDir, { recursive: true });
+
   fs.writeFileSync(
-    path.join(targetDir, ".env"),
-    `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mydb?schema=public"\n`,
+    path.join(cacheDir, "redis.go"),
+    `package cache
+
+import (
+\t"context"
+\t"os"
+
+\t"github.com/redis/go-redis/v9"
+)
+
+var Client *redis.Client
+
+func Connect() error {
+\turl := os.Getenv("REDIS_URL")
+\tif url == "" {
+\t\turl = "redis://localhost:6379"
+\t}
+
+\topts, err := redis.ParseURL(url)
+\tif err != nil {
+\t\treturn err
+\t}
+
+\tClient = redis.NewClient(opts)
+\treturn Client.Ping(context.Background()).Err()
+}
+`,
   );
+}
+
+function applyRedisPython(targetDir: string): void {
+  const reqPath = path.join(targetDir, "requirements.txt");
+  let reqs = fs.readFileSync(reqPath, "utf-8");
+  reqs += "redis>=5.0.0\n";
+  fs.writeFileSync(reqPath, reqs);
+
+  fs.writeFileSync(
+    path.join(targetDir, "cache.py"),
+    `import os
+
+import redis
+
+r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+`,
+  );
+}
+
+function applyAuth(targetDir: string, template: TemplateInfo): void {
+  switch (template.language) {
+    case "node":
+      if (template.id === "node-fastify") {
+        applyAuthFastify(targetDir);
+      } else if (template.id === "node-nestjs") {
+        applyAuthNestJS(targetDir);
+      } else {
+        applyAuthExpress(targetDir);
+      }
+      break;
+    case "go":
+      applyAuthGo(targetDir);
+      break;
+    case "python":
+      applyAuthPython(targetDir);
+      break;
+  }
+}
+
+function applyAuthExpress(targetDir: string): void {
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = readPackageJson(pkgPath);
+  pkg.dependencies = {
+    ...(pkg.dependencies as Record<string, string>),
+    jsonwebtoken: "^9.0.0",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const middlewareDir = path.join(targetDir, "src", "middleware");
+  fs.mkdirSync(middlewareDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(middlewareDir, "auth.js"),
+    `const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
+
+function authenticate(req, res, next) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+}
+
+module.exports = { authenticate, generateToken };
+`,
+  );
+}
+
+function applyAuthFastify(targetDir: string): void {
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = readPackageJson(pkgPath);
+  pkg.dependencies = {
+    ...(pkg.dependencies as Record<string, string>),
+    jsonwebtoken: "^9.0.0",
+    "fastify-plugin": "^5.0.0",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const pluginsDir = path.join(targetDir, "src", "plugins");
+  fs.mkdirSync(pluginsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(pluginsDir, "auth.js"),
+    `const fp = require("fastify-plugin");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
+
+module.exports = fp(async function authPlugin(fastify) {
+  fastify.decorate("authenticate", async function (request, reply) {
+    const token = request.headers.authorization?.replace("Bearer ", "");
+    if (!token) {
+      reply.code(401).send({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      request.user = jwt.verify(token, JWT_SECRET);
+    } catch {
+      reply.code(401).send({ error: "Invalid token" });
+    }
+  });
+
+  fastify.decorate("generateToken", function (payload) {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+  });
+});
+`,
+  );
+}
+
+function applyAuthNestJS(targetDir: string): void {
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = readPackageJson(pkgPath);
+  pkg.dependencies = {
+    ...(pkg.dependencies as Record<string, string>),
+    jsonwebtoken: "^9.0.0",
+  };
+  pkg.devDependencies = {
+    ...(pkg.devDependencies as Record<string, string>),
+    "@types/jsonwebtoken": "^9.0.0",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const guardsDir = path.join(targetDir, "src", "guards");
+  fs.mkdirSync(guardsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(guardsDir, "auth.guard.ts"),
+    `import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import * as jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    const token = request.headers.authorization?.replace("Bearer ", "");
+    if (!token) throw new UnauthorizedException();
+    try {
+      request.user = jwt.verify(token, JWT_SECRET);
+      return true;
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+}
+
+export function generateToken(payload: Record<string, unknown>): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+}
+`,
+  );
+}
+
+function applyAuthGo(targetDir: string): void {
+  const goModPath = path.join(targetDir, "go.mod");
+  let goMod = fs.readFileSync(goModPath, "utf-8");
+  goMod += `\nrequire github.com/golang-jwt/jwt/v5 v5.2.1\n`;
+  fs.writeFileSync(goModPath, goMod);
+
+  const authDir = path.join(targetDir, "internal", "auth");
+  fs.mkdirSync(authDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(authDir, "auth.go"),
+    `package auth
+
+import (
+\t"encoding/json"
+\t"net/http"
+\t"os"
+\t"strings"
+\t"time"
+
+\t"github.com/golang-jwt/jwt/v5"
+)
+
+type contextKey string
+
+const UserKey contextKey = "user"
+
+var jwtSecret = []byte(getSecret())
+
+func getSecret() string {
+\ts := os.Getenv("JWT_SECRET")
+\tif s == "" {
+\t\treturn "change-me-in-production"
+\t}
+\treturn s
+}
+
+func Authenticate(next http.Handler) http.Handler {
+\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+\t\tauth := r.Header.Get("Authorization")
+\t\ttokenStr := strings.TrimPrefix(auth, "Bearer ")
+\t\tif tokenStr == "" || tokenStr == auth {
+\t\t\tw.Header().Set("Content-Type", "application/json")
+\t\t\tw.WriteHeader(http.StatusUnauthorized)
+\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+\t\t\treturn
+\t\t}
+
+\t\ttoken, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+\t\t\treturn jwtSecret, nil
+\t\t})
+\t\tif err != nil || !token.Valid {
+\t\t\tw.Header().Set("Content-Type", "application/json")
+\t\t\tw.WriteHeader(http.StatusUnauthorized)
+\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Invalid token"})
+\t\t\treturn
+\t\t}
+
+\t\tnext.ServeHTTP(w, r)
+\t})
+}
+
+func GenerateToken(claims map[string]interface{}) (string, error) {
+\tmapClaims := jwt.MapClaims{
+\t\t"exp": time.Now().Add(24 * time.Hour).Unix(),
+\t}
+\tfor k, v := range claims {
+\t\tmapClaims[k] = v
+\t}
+\ttoken := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims)
+\treturn token.SignedString(jwtSecret)
+}
+`,
+  );
+}
+
+function applyAuthPython(targetDir: string): void {
+  const reqPath = path.join(targetDir, "requirements.txt");
+  let reqs = fs.readFileSync(reqPath, "utf-8");
+  reqs += "pyjwt>=2.0.0\n";
+  fs.writeFileSync(reqPath, reqs);
+
+  fs.writeFileSync(
+    path.join(targetDir, "auth.py"),
+    `import os
+from datetime import datetime, timedelta, timezone
+
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
+security = HTTPBearer()
+
+
+def authenticate(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=["HS256"])
+        return payload
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
+
+
+def generate_token(payload: dict) -> str:
+    payload["exp"] = datetime.now(timezone.utc) + timedelta(hours=24)
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+`,
+  );
+}
+
+function applyQueue(targetDir: string, template: TemplateInfo): void {
+  if (template.language !== "node") return;
+
+  const pkgPath = path.join(targetDir, "package.json");
+  const pkg = readPackageJson(pkgPath);
+  pkg.dependencies = {
+    ...(pkg.dependencies as Record<string, string>),
+    bullmq: "^5.0.0",
+  };
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+
+  const libDir = path.join(targetDir, "src", "lib");
+  fs.mkdirSync(libDir, { recursive: true });
+
+  const isTypeScript = template.id === "node-nestjs";
+  if (isTypeScript) {
+    fs.writeFileSync(
+      path.join(libDir, "queue.ts"),
+      `import { Queue, Worker, type Processor } from "bullmq";
+
+const connection = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+};
+
+export const defaultQueue = new Queue("default", { connection });
+
+export function createWorker(name: string, processor: Processor) {
+  return new Worker(name, processor, { connection });
+}
+
+export { connection };
+`,
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(libDir, "queue.js"),
+      `const { Queue, Worker } = require("bullmq");
+
+const connection = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+};
+
+const defaultQueue = new Queue("default", { connection });
+
+function createWorker(name, processor) {
+  return new Worker(name, processor, { connection });
+}
+
+module.exports = { defaultQueue, createWorker, connection };
+`,
+    );
+  }
 }
 
 // --- Prisma (Node.js) ---
