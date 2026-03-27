@@ -85,20 +85,21 @@ function getDevInstructions(
 }
 
 function getDatabaseInstructions(template: TemplateInfo): string[] | null {
+  const dockerLine = "docker compose up -d    # start Postgres";
   switch (template.language) {
     case "node":
       return [
-        "cp .env.example .env      # configure DATABASE_URL",
+        dockerLine,
         "npm run db:migrate        # run migrations",
         "npm run db:studio         # open Prisma Studio",
       ];
     case "go":
       return [
-        "cp .env.example .env      # configure DATABASE_URL",
+        dockerLine,
       ];
     case "python":
       return [
-        "cp .env.example .env      # configure DATABASE_URL",
+        dockerLine,
         "alembic init alembic      # initialize Alembic migrations",
       ];
     default:

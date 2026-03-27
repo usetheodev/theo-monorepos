@@ -435,4 +435,114 @@ describe("scaffold with styling", () => {
     expect(fs.existsSync(path.join(targetDir, "postcss.config.js"))).toBe(false);
     expect(fs.existsSync(path.join(targetDir, "src", "app", "globals.css"))).toBe(false);
   });
+
+  it("node-express has production-ready files", () => {
+    const template = getTemplate("node-express")!;
+    const targetDir = path.join(tempDir, "prod-express");
+
+    scaffold({
+      projectName: "prod-express",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "eslint.config.js"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".prettierrc"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
+    expect(pkg.dependencies.cors).toBeDefined();
+    expect(pkg.dependencies["pino-http"]).toBeDefined();
+    expect(pkg.devDependencies.eslint).toBeDefined();
+    expect(pkg.devDependencies.prettier).toBeDefined();
+    expect(pkg.scripts.lint).toBeDefined();
+    expect(pkg.scripts.format).toBeDefined();
+  });
+
+  it("go-api has production-ready files", () => {
+    const template = getTemplate("go-api")!;
+    const targetDir = path.join(tempDir, "prod-go");
+
+    scaffold({
+      projectName: "prod-go",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "Makefile"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("setup-go");
+  });
+
+  it("python-fastapi has production-ready files", () => {
+    const template = getTemplate("python-fastapi")!;
+    const targetDir = path.join(tempDir, "prod-py");
+
+    scaffold({
+      projectName: "prod-py",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "pyproject.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("setup-python");
+    expect(ci).toContain("ruff");
+  });
+
+  it("database flag generates docker-compose.yml", () => {
+    const template = getTemplate("node-express")!;
+    const targetDir = path.join(tempDir, "db-compose");
+
+    scaffold({
+      projectName: "db-compose",
+      template,
+      targetDir,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "docker-compose.yml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".env"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".env.example"))).toBe(true);
+
+    const compose = fs.readFileSync(path.join(targetDir, "docker-compose.yml"), "utf-8");
+    expect(compose).toContain("postgres:16-alpine");
+    expect(compose).toContain("healthcheck");
+    expect(compose).toContain("pgdata");
+  });
+
+  it("all templates include CI workflow", () => {
+    const templateIds = [
+      "node-express", "node-fastify", "node-nextjs", "go-api",
+      "python-fastapi", "monorepo-turbo", "fullstack-nextjs",
+      "node-nestjs", "node-worker",
+    ];
+
+    for (const id of templateIds) {
+      const template = getTemplate(id)!;
+      const targetDir = path.join(tempDir, `ci-${id}`);
+
+      scaffold({
+        projectName: `ci-${id}`,
+        template,
+        targetDir,
+        skipInstall: true,
+        skipGit: true,
+      });
+
+      expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+    }
+  });
 });

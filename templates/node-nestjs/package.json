@@ -5,7 +5,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
-    "dev": "ts-node-dev --respawn src/main.ts"
+    "dev": "ts-node-dev --respawn src/main.ts",
+    "lint": "eslint src/",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -17,6 +19,9 @@
   "devDependencies": {
     "typescript": "^5.6.0",
     "ts-node-dev": "^2.0.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "prettier": "^3.4.0"
   }
 }
