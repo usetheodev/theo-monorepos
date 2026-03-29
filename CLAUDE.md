@@ -8,7 +8,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 **theo-monorepos** is the starter template repository for [Theo](https://usetheo.dev) — a CLI-first Kubernetes PaaS. It contains:
 
-1. **`templates/`** — 9 production-ready project templates covering Node.js, Go, Python, monorepos, and fullstack
+1. **`templates/`** — 14 production-ready project templates covering Node.js, Go, Python, Rust, Java, Ruby, monorepos, and fullstack
 2. **`create-theo/`** — An npm scaffolding CLI (`npm create theo@latest`) with composable modules (database, Redis, auth, queue)
 3. **`scripts/`** — Validation tooling to ensure all templates work correctly
 
@@ -22,19 +22,22 @@ The goal: `npm create theo@latest` → choose stack → `theo deploy` → live U
 # create-theo CLI
 cd create-theo && npm install     # Install dependencies
 cd create-theo && npm run build   # Copy templates + compile TypeScript
-cd create-theo && npm test        # Run all tests (Jest, 115 tests, 11 suites)
+cd create-theo && npm test        # Run all tests (Jest, 11 suites)
 cd create-theo && npm run dev     # TypeScript watch mode
 
 # Validation
-bash scripts/validate-templates.sh   # Scaffold + validate all 9 templates
+bash scripts/validate-templates.sh   # Scaffold + validate all 14 templates
 
 # Test a template manually
 cd templates/node-express && npm install && PORT=4100 node src/index.js
 cd templates/go-api && GOWORK=off go run .
 cd templates/python-fastapi && uvicorn main:app --port 4103
+cd templates/rust-axum && cargo run
+cd templates/java-spring && ./gradlew bootRun
+cd templates/ruby-sinatra && bundle install && bundle exec rackup
 ```
 
-**Prerequisites:** Node.js 18+, Go 1.22+ (for go-api template testing), Python 3.10+ (for python-fastapi template testing)
+**Prerequisites:** Node.js 18+, Go 1.22+ (for Go templates), Python 3.10+ (for Python templates), Rust stable (for Rust templates), Java 21+ (for Java templates), Ruby 3.2+ (for Ruby templates)
 
 ---
 
@@ -67,7 +70,7 @@ Each template must work independently. No shared dependencies between templates.
 Every directory in `templates/` must have a corresponding entry in `create-theo/src/templates.ts`. The validation script catches drift. If you add a template directory, add it to the registry. If you remove one, remove it from the registry.
 
 ### Rule 6: Tests before shipping
-The `create-theo` CLI has 115 tests across 11 suites. Any new feature or template must have corresponding test coverage. Run `npm test` before considering work done.
+The `create-theo` CLI has tests across 11 suites. Any new feature or template must have corresponding test coverage. Run `npm test` before considering work done.
 
 ### Rule 7: Node compatibility
 Use `fileURLToPath(import.meta.url)` instead of `import.meta.dirname` for Node 18 compatibility. The CLI must work on Node 18, 20, and 22.
@@ -91,7 +94,12 @@ theo-monorepos/
 │   ├── node-nextjs/                   ← Next.js App Router (frontend, SSR)
 │   ├── go-api/                        ← Go stdlib net/http (port 8080)
 │   ├── python-fastapi/                ← FastAPI + Uvicorn (port 8000)
+│   ├── rust-axum/                     ← Rust Axum + Tokio (port 8080)
+│   ├── java-spring/                   ← Java Spring Boot (port 8080)
+│   ├── ruby-sinatra/                  ← Ruby Sinatra + Puma (port 4567)
 │   ├── monorepo-turbo/                ← Turborepo: Express API + Next.js + shared
+│   ├── monorepo-go/                   ← Go Workspaces: API + Worker + shared
+│   ├── monorepo-python/               ← uv Workspace: FastAPI + Worker + shared
 │   ├── fullstack-nextjs/              ← Next.js with API routes + CRUD
 │   ├── node-nestjs/                   ← NestJS with modules (TypeScript)
 │   └── node-worker/                   ← Background job processor
@@ -104,7 +112,7 @@ theo-monorepos/
 │   │   ├── index.ts                   ← entrypoint (#!/usr/bin/env node)
 │   │   ├── prompts.ts                 ← @inquirer/prompts interactive flow
 │   │   ├── scaffold.ts               ← copy + layers + placeholder replacement
-│   │   ├── templates.ts              ← template registry (9 entries)
+│   │   ├── templates.ts              ← template registry (14 entries)
 │   │   ├── validate.ts               ← RFC 1123 project name validation
 │   │   ├── output.ts                 ← post-scaffold success message
 │   │   ├── database.ts               ← database feature detection + ORM config
@@ -136,10 +144,10 @@ theo-monorepos/
 |-----------|-----------|---------|
 | create-theo CLI | TypeScript + @inquirer/prompts + chalk + ora | Interactive project scaffolding |
 | Build | tsc (TypeScript 5.6+) | Compile to ESM |
-| Tests | Jest + ts-jest | 115 tests, 11 suites |
+| Tests | Jest + ts-jest | 11 suites |
 | Validation | Bash script | E2E template verification |
 | CI | GitHub Actions | Node 18/20/22 × Linux/Windows/macOS |
-| Templates | JS, TS, Go, Python | Production-ready starters for Theo users |
+| Templates | JS, TS, Go, Python, Rust, Java, Ruby | Production-ready starters for Theo users |
 
 ---
 
@@ -152,7 +160,12 @@ theo-monorepos/
 | node-nextjs | Node.js | Next.js 14 | frontend | 3000 | `src/app/page.js`, `next.config.js` |
 | go-api | Go | net/http (stdlib) | api | 8080 | `main.go`, `go.mod`, `Makefile` |
 | python-fastapi | Python | FastAPI + Uvicorn | api | 8000 | `main.py`, `requirements.txt`, `pyproject.toml` |
+| rust-axum | Rust | Axum + Tokio | api | 8080 | `src/main.rs`, `Cargo.toml`, `rustfmt.toml` |
+| java-spring | Java | Spring Boot 3 | api | 8080 | `src/main/java/...`, `build.gradle.kts` |
+| ruby-sinatra | Ruby | Sinatra + Puma | api | 4567 | `app.rb`, `Gemfile`, `config/puma.rb` |
 | monorepo-turbo | Node.js | Turborepo + Express + Next.js | monorepo | 3001/3002 | `turbo.json`, `apps/`, `packages/` |
+| monorepo-go | Go | Go Workspaces | monorepo | 8080/8081 | `go.work`, `apps/`, `pkg/` |
+| monorepo-python | Python | uv Workspaces + FastAPI | monorepo | 8000/8001 | `pyproject.toml`, `apps/`, `packages/` |
 | fullstack-nextjs | Node.js | Next.js 14 | fullstack | 3000 | `src/app/api/items/route.js` |
 | node-nestjs | TypeScript | NestJS 10 | api | 3000 | `src/main.ts`, `src/app.module.ts`, `src/filters/` |
 | node-worker | Node.js | Express + polling loop | worker | 3000 | `src/index.js` |
@@ -169,10 +182,11 @@ npm create theo@latest
     ├─ scaffold:
     │   ├─ copyDir: template → target (replace {{project-name}})
     │   ├─ applyStyling (if frontend + styling selected)
-    │   ├─ applyDatabase (if --database): Prisma / GORM / SQLAlchemy
-    │   ├─ applyRedis (if --add redis): ioredis / go-redis / redis-py
-    │   ├─ applyAuth (if --add auth): JWT middleware per framework
-    │   ├─ applyQueue (if --add queue): BullMQ (Node only)
+    │   ├─ applyDatabase (if --database): Prisma / GORM / SQLAlchemy / Diesel / Spring Data JPA / Sequel
+    │   ├─ applyRedis (if --add redis): ioredis / go-redis / redis-py / redis crate / Spring Redis / redis gem
+    │   ├─ applyAuth (if --add auth-jwt): JWT middleware per framework (6 languages)
+    │   ├─ applyAuthOAuth (if --add auth-oauth): OAuth/OIDC per framework (6 languages)
+    │   ├─ applyQueue (if --add queue): BullMQ (Node) / Asynq (Go) / arq (Python)
     │   ├─ writeInfraFiles: docker-compose.yml + .env (merged postgres + redis)
     │   ├─ writeCI: .github/workflows/ci.yml (per language)
     │   ├─ git init
@@ -195,18 +209,32 @@ Modules are registered in `src/addons.ts`. Each module:
 
 | Module | Template types | Languages | Docker service | Env vars |
 |--------|---------------|-----------|---------------|----------|
-| redis | api, worker | node, go, python | redis:7-alpine | REDIS_URL |
-| auth | api | node, go, python | — | JWT_SECRET |
-| queue | api, worker | node only | redis:7-alpine | REDIS_URL |
+| redis | api, worker | node, go, python, rust, java, ruby | redis:7-alpine | REDIS_URL |
+| auth-jwt | api | node, go, python, rust, java, ruby | — | JWT_SECRET |
+| auth-oauth | api | node, go, python, rust, java, ruby | — | OIDC_ISSUER_URL, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET |
+| queue | api, worker | node, go, python | redis:7-alpine | REDIS_URL |
 
-Queue auto-includes Redis via `resolveAddonDependencies()`.
+Queue auto-includes Redis via `resolveAddonDependencies()`. `auth-jwt` and `auth-oauth` are mutually exclusive.
 
-**Auth generates framework-specific code:**
+**Auth (JWT) generates framework-specific code:**
 - Express: `src/middleware/auth.js`
 - Fastify: `src/plugins/auth.js` (fastify-plugin pattern)
 - NestJS: `src/guards/auth.guard.ts` (@Injectable + CanActivate)
 - Go: `internal/auth/auth.go`
 - Python: `auth.py` (FastAPI Depends + HTTPBearer)
+- Rust: `src/auth.rs` (Axum middleware + jsonwebtoken)
+- Java: `config/JwtFilter.java` (JJWT)
+- Ruby: `auth.rb` (ruby-jwt)
+
+**Auth (OAuth/OIDC) generates framework-specific code:**
+- Express: `src/middleware/oauth.js` (openid-client)
+- Fastify: `src/plugins/oauth.js` (openid-client)
+- NestJS: `src/guards/oauth.guard.ts` (openid-client)
+- Go: `internal/auth/oauth.go` (go-oidc)
+- Python: `oauth.py` (authlib)
+- Rust: `src/oauth.rs` (openidconnect + reqwest)
+- Java: Spring OAuth2 Resource Server (via application.yml)
+- Ruby: `oauth.rb` (omniauth-openid-connect)
 
 ---
 
@@ -233,7 +261,7 @@ This is a **subproject** within the Theo monorepo (`theo/theo-monorepos/`). It i
 
 The only dependency is that `theo deploy` works end-to-end, which has been validated since Sprint 2.
 
-Templates here mirror what `theo-packs` can auto-detect and build Dockerfiles for: Node.js, Go, Python, and static files. If a new language pack is added to `theo-packs`, a corresponding template should be added here.
+Templates here mirror what `theo-packs` can auto-detect and build Dockerfiles for: Node.js, Go, Python, Rust, Java, Ruby, and static files. If a new language pack is added to `theo-packs`, a corresponding template should be added here.
 
 ---
 
@@ -242,7 +270,7 @@ Templates here mirror what `theo-packs` can auto-detect and build Dockerfiles fo
 1. Create `templates/<template-id>/` with all required files (see Rule 2)
 2. Use `{{project-name}}` placeholder everywhere the project name appears
 3. Include production-ready features: CORS, structured logging, error handling, graceful shutdown
-4. Add linting config: `eslint.config.js` + `.prettierrc` (Node), `Makefile` (Go), `pyproject.toml` (Python)
+4. Add linting config: `eslint.config.js` + `.prettierrc` (Node), `Makefile` (Go), `pyproject.toml` (Python), `rustfmt.toml` (Rust), Gradle (Java), `.rubocop.yml` (Ruby)
 5. Store `.gitignore` as `gitignore` (without dot)
 6. Add entry to `create-theo/src/templates.ts` with id, name, description, language, type, defaultPort
 7. Update help text in `create-theo/src/index.ts`

@@ -4,7 +4,7 @@ export interface TemplateInfo {
   id: string;
   name: string;
   description: string;
-  language: "node" | "go" | "python";
+  language: "node" | "go" | "python" | "rust" | "java" | "ruby";
   type: TemplateType;
   defaultPort: number | null;
 }
@@ -93,6 +93,46 @@ export const templates: TemplateInfo[] = [
     language: "node",
     type: "worker",
     defaultPort: 3000,
+  },
+  {
+    id: "rust-axum",
+    name: "Rust — Axum",
+    description: "Axum API server with Tokio",
+    language: "rust",
+    type: "api",
+    defaultPort: 8080,
+  },
+  {
+    id: "java-spring",
+    name: "Java — Spring Boot",
+    description: "Spring Boot API with Gradle",
+    language: "java",
+    type: "api",
+    defaultPort: 8080,
+  },
+  {
+    id: "ruby-sinatra",
+    name: "Ruby — Sinatra",
+    description: "Sinatra API with Puma",
+    language: "ruby",
+    type: "api",
+    defaultPort: 4567,
+  },
+  {
+    id: "monorepo-go",
+    name: "Monorepo — Go Workspaces",
+    description: "Go workspace with API + Worker + shared package",
+    language: "go",
+    type: "monorepo",
+    defaultPort: null,
+  },
+  {
+    id: "monorepo-python",
+    name: "Monorepo — Python (uv)",
+    description: "uv workspace with FastAPI + Worker + shared package",
+    language: "python",
+    type: "monorepo",
+    defaultPort: null,
   },
 ];
 

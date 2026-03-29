@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const pino = require("pino");
 
 const logger = pino({ level: process.env.LOG_LEVEL || "info" });
@@ -9,12 +10,25 @@ const port = process.env.PORT || 3000;
 let isShuttingDown = false;
 let isProcessingJob = false;
 
+app.use(cors());
+
 // Health endpoint for Kubernetes probes
 app.get("/health", (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ status: "shutting-down" });
   }
   res.json({ status: "ok" });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
+
+// Error handler
+app.use((err, req, res, _next) => {
+  logger.error({ err }, "Unhandled error");
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 app.listen(port, () => {

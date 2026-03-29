@@ -7,8 +7,8 @@ import {
 } from "../src/templates.js";
 
 describe("templates registry", () => {
-  it("has 9 templates", () => {
-    expect(templates).toHaveLength(9);
+  it("has 14 templates", () => {
+    expect(templates).toHaveLength(14);
   });
 
   it("each template has required fields", () => {
@@ -16,7 +16,7 @@ describe("templates registry", () => {
       expect(t.id).toBeTruthy();
       expect(t.name).toBeTruthy();
       expect(t.description).toBeTruthy();
-      expect(["node", "go", "python"]).toContain(t.language);
+      expect(["node", "go", "python", "rust", "java", "ruby"]).toContain(t.language);
       expect(["api", "frontend", "fullstack", "monorepo", "worker"]).toContain(
         t.type,
       );
@@ -44,6 +44,11 @@ describe("templates registry", () => {
     expect(ids).toContain("fullstack-nextjs");
     expect(ids).toContain("node-nestjs");
     expect(ids).toContain("node-worker");
+    expect(ids).toContain("rust-axum");
+    expect(ids).toContain("java-spring");
+    expect(ids).toContain("ruby-sinatra");
+    expect(ids).toContain("monorepo-go");
+    expect(ids).toContain("monorepo-python");
   });
 
   it("no duplicate template ids", () => {
@@ -66,12 +71,15 @@ describe("template categories", () => {
 
   it("getTemplatesByType filters correctly", () => {
     const apis = getTemplatesByType("api");
-    expect(apis.length).toBeGreaterThanOrEqual(4);
+    expect(apis.length).toBeGreaterThanOrEqual(7);
     expect(apis.every((t) => t.type === "api")).toBe(true);
 
     const workers = getTemplatesByType("worker");
     expect(workers).toHaveLength(1);
     expect(workers[0].id).toBe("node-worker");
+
+    const monorepos = getTemplatesByType("monorepo");
+    expect(monorepos).toHaveLength(3);
   });
 
   it("every category has at least one template", () => {

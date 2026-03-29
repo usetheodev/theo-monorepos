@@ -3,11 +3,13 @@ import type { TemplateInfo } from "./templates.js";
 import type { StylingOption } from "./styling.js";
 import type { AddonId } from "./addons.js";
 import { getOrmForLanguage } from "./database.js";
+import type { Language } from "./database.js";
 
 const ADDON_LABELS: Record<AddonId, string> = {
-  redis: "Redis (ioredis)",
-  auth: "Auth (JWT)",
-  queue: "Queue (BullMQ)",
+  redis: "Redis",
+  "auth-jwt": "Auth (JWT)",
+  "auth-oauth": "Auth (OAuth/OIDC)",
+  queue: "Queue",
 };
 
 export function printSuccess(
@@ -31,7 +33,7 @@ export function printSuccess(
   }
 
   if (database) {
-    const orm = getOrmForLanguage(template.language);
+    const orm = getOrmForLanguage(template.language as Language);
     console.log(chalk.dim(`  Database: PostgreSQL (${orm.name})`));
   }
 
@@ -96,6 +98,12 @@ function getDevInstructions(
         "pip install -r requirements.txt",
         "uvicorn main:app --reload --port 8000",
       ];
+    case "rust":
+      return ["cargo run"];
+    case "java":
+      return ["./gradlew bootRun"];
+    case "ruby":
+      return ["bundle install", "bundle exec rackup"];
     default:
       return null;
   }
@@ -118,6 +126,21 @@ function getDatabaseInstructions(template: TemplateInfo): string[] | null {
       return [
         dockerLine,
         "alembic init alembic      # initialize Alembic migrations",
+      ];
+    case "rust":
+      return [
+        dockerLine,
+        "diesel setup              # run Diesel migrations",
+      ];
+    case "java":
+      return [
+        dockerLine,
+        "# JPA auto-creates tables via ddl-auto: update",
+      ];
+    case "ruby":
+      return [
+        dockerLine,
+        "# Sequel auto-creates tables on first run",
       ];
     default:
       return null;

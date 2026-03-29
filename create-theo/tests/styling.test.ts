@@ -1,9 +1,22 @@
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import {
   stylingOptions,
   getStylingOption,
   listStylingIds,
   hasFrontend,
 } from "../src/styling.js";
+import { scaffold } from "../src/scaffold.js";
+import { getTemplate } from "../src/templates.js";
+
+function createTempDir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "create-theo-styling-"));
+}
+
+function cleanup(dir: string): void {
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 
 describe("styling registry", () => {
   it("has 8 styling options", () => {
@@ -85,5 +98,67 @@ describe("hasFrontend", () => {
 
   it("returns false for node-nestjs", () => {
     expect(hasFrontend("node-nestjs")).toBe(false);
+  });
+});
+
+describe("parametric styling scaffold with node-nextjs", () => {
+  let tempDir: string;
+
+  beforeEach(() => { tempDir = createTempDir(); });
+  afterEach(() => { cleanup(tempDir); });
+
+  const expectedConfigFiles: Record<string, { tailwind: boolean; postcss: boolean }> = {
+    none:      { tailwind: false, postcss: false },
+    tailwind:  { tailwind: true,  postcss: true  },
+    shadcn:    { tailwind: true,  postcss: true  },
+    daisyui:   { tailwind: true,  postcss: true  },
+    chakra:    { tailwind: false, postcss: false },
+    mantine:   { tailwind: false, postcss: true  },
+    bootstrap: { tailwind: false, postcss: false },
+    bulma:     { tailwind: false, postcss: false },
+  };
+
+  it.each(listStylingIds())("styling=%s creates correct dependencies in package.json", (stylingId) => {
+    const template = getTemplate("node-nextjs")!;
+    const styling = getStylingOption(stylingId)!;
+    const targetDir = path.join(tempDir, `style-deps-${stylingId}`);
+
+    scaffold({
+      projectName: `style-deps-${stylingId}`,
+      template,
+      targetDir,
+      styling: stylingId === "none" ? null : styling,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"));
+
+    // Verify every dependency declared by the styling option is present
+    for (const [dep, version] of Object.entries(styling.dependencies)) {
+      expect(pkg.dependencies?.[dep]).toBe(version);
+    }
+    for (const [dep, version] of Object.entries(styling.devDependencies)) {
+      expect(pkg.devDependencies?.[dep]).toBe(version);
+    }
+  });
+
+  it.each(listStylingIds())("styling=%s creates correct config files", (stylingId) => {
+    const template = getTemplate("node-nextjs")!;
+    const styling = getStylingOption(stylingId)!;
+    const targetDir = path.join(tempDir, `style-cfg-${stylingId}`);
+
+    scaffold({
+      projectName: `style-cfg-${stylingId}`,
+      template,
+      targetDir,
+      styling: stylingId === "none" ? null : styling,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const expected = expectedConfigFiles[stylingId];
+    expect(fs.existsSync(path.join(targetDir, "tailwind.config.js"))).toBe(expected.tailwind);
+    expect(fs.existsSync(path.join(targetDir, "postcss.config.js"))).toBe(expected.postcss);
   });
 });

@@ -133,6 +133,7 @@ function printHelp(): void {
     -t, --template <id>   Template to use (skip prompt)
     -s, --styling <id>    Styling option for frontend templates
     -d, --database        Add PostgreSQL database with ORM
+    -a, --add <ids>       Comma-separated addons (redis,auth-jwt,auth-oauth,queue)
     -h, --help            Show this help message
 
   ${chalk.bold("Templates:")}
@@ -142,12 +143,17 @@ function printHelp(): void {
       go-api              Go API (standard library)
       python-fastapi      FastAPI + Uvicorn
       node-nestjs         NestJS API with modules
+      rust-axum           Rust Axum API server
+      java-spring         Java Spring Boot API
+      ruby-sinatra        Ruby Sinatra API
     ${chalk.cyan("Frontend:")}
       node-nextjs         Next.js app (App Router)
     ${chalk.cyan("Fullstack:")}
       fullstack-nextjs    Next.js fullstack with API routes
     ${chalk.cyan("Monorepo:")}
       monorepo-turbo      Turborepo (Express API + Next.js)
+      monorepo-go         Go Workspaces (API + Worker)
+      monorepo-python     Python uv workspace (API + Worker)
     ${chalk.cyan("Worker:")}
       node-worker         Background job processor
 

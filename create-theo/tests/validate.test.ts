@@ -60,4 +60,66 @@ describe("validateProjectName", () => {
   it("rejects special characters", () => {
     expect(validateProjectName("my_project")).not.toBe(true);
   });
+
+  it("rejects unicode name: cafe-app with accent", () => {
+    expect(validateProjectName("caf\u00e9-app")).not.toBe(true);
+  });
+
+  it("rejects emoji input", () => {
+    expect(validateProjectName("\ud83d\ude80-app")).not.toBe(true);
+  });
+
+  it("accepts exactly 63-char valid name", () => {
+    const name63 = "a" + "b".repeat(61) + "c"; // 63 chars, starts with letter, ends with letter
+    expect(name63.length).toBe(63);
+    expect(validateProjectName(name63)).toBe(true);
+  });
+
+  it("rejects 64-char name (just over boundary)", () => {
+    const name64 = "a" + "b".repeat(62) + "c"; // 64 chars
+    expect(name64.length).toBe(64);
+    expect(validateProjectName(name64)).not.toBe(true);
+  });
+
+  it("rejects all-hyphens string", () => {
+    expect(validateProjectName("---")).not.toBe(true);
+  });
+
+  it("rejects whitespace-only string", () => {
+    expect(validateProjectName("   ")).not.toBe(true);
+  });
+
+  it("rejects empty string (explicit)", () => {
+    expect(validateProjectName("")).not.toBe(true);
+  });
+});
+
+describe("sanitizeProjectName edge cases", () => {
+  it("sanitizes unicode name: cafe with accent", () => {
+    const result = sanitizeProjectName("caf\u00e9-app");
+    expect(result).toMatch(/^[a-z][a-z0-9-]*[a-z0-9]$/);
+    expect(result).not.toContain("\u00e9");
+  });
+
+  it("sanitizes emoji input", () => {
+    const result = sanitizeProjectName("\ud83d\ude80-app");
+    expect(result).toMatch(/^[a-z]/);
+    expect(result).not.toContain("\ud83d\ude80");
+  });
+
+  it("sanitizes all-hyphens to prefixed form", () => {
+    const result = sanitizeProjectName("---");
+    expect(result).toMatch(/^[a-z]/);
+  });
+
+  it("sanitizes whitespace-only to prefixed form", () => {
+    const result = sanitizeProjectName("   ");
+    expect(result).toMatch(/^[a-z]/);
+  });
+
+  it("truncates to exactly 63 chars max", () => {
+    const long = "a".repeat(100);
+    const result = sanitizeProjectName(long);
+    expect(result.length).toBeLessThanOrEqual(63);
+  });
 });

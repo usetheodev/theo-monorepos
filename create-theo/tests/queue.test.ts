@@ -56,13 +56,37 @@ describe("scaffold with queue", () => {
     expect(compose).toContain("redis:7-alpine");
   });
 
-  it("does not add queue to go-api", () => {
+  it("adds queue (asynq) to go-api", () => {
     const template = getTemplate("go-api")!;
     const targetDir = path.join(tempDir, "queue-go");
 
-    scaffold({ projectName: "queue-go", template, targetDir, addons: ["queue"], skipInstall: true, skipGit: true });
+    scaffold({ projectName: "queue-go", template, targetDir, addons: ["redis", "queue"], skipInstall: true, skipGit: true });
 
-    expect(fs.existsSync(path.join(targetDir, "src", "lib", "queue.js"))).toBe(false);
+    expect(fs.existsSync(path.join(targetDir, "internal", "queue", "queue.go"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "internal", "queue", "worker.go"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "internal", "queue", "tasks.go"))).toBe(true);
+
+    const goMod = fs.readFileSync(path.join(targetDir, "go.mod"), "utf-8");
+    expect(goMod).toContain("asynq");
+
+    const queueFile = fs.readFileSync(path.join(targetDir, "internal", "queue", "queue.go"), "utf-8");
+    expect(queueFile).toContain("asynq.NewClient");
+  });
+
+  it("adds queue (arq) to python-fastapi", () => {
+    const template = getTemplate("python-fastapi")!;
+    const targetDir = path.join(tempDir, "queue-py");
+
+    scaffold({ projectName: "queue-py", template, targetDir, addons: ["redis", "queue"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "queue_worker.py"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "queue_client.py"))).toBe(true);
+
+    const reqs = fs.readFileSync(path.join(targetDir, "requirements.txt"), "utf-8");
+    expect(reqs).toContain("arq");
+
+    const worker = fs.readFileSync(path.join(targetDir, "queue_worker.py"), "utf-8");
+    expect(worker).toContain("WorkerSettings");
   });
 
   it("combines all addons + database", () => {
@@ -74,7 +98,7 @@ describe("scaffold with queue", () => {
       template,
       targetDir,
       database: true,
-      addons: ["redis", "auth", "queue"],
+      addons: ["redis", "auth-jwt", "queue"],
       skipInstall: true,
       skipGit: true,
     });

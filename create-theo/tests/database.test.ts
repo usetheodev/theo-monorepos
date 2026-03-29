@@ -48,6 +48,30 @@ describe("database config", () => {
       language: "python",
     });
   });
+
+  it("maps rust to Diesel", () => {
+    expect(getOrmForLanguage("rust")).toEqual({
+      id: "diesel",
+      name: "Diesel",
+      language: "rust",
+    });
+  });
+
+  it("maps java to Spring Data JPA", () => {
+    expect(getOrmForLanguage("java")).toEqual({
+      id: "spring-data-jpa",
+      name: "Spring Data JPA",
+      language: "java",
+    });
+  });
+
+  it("maps ruby to Sequel", () => {
+    expect(getOrmForLanguage("ruby")).toEqual({
+      id: "sequel",
+      name: "Sequel",
+      language: "ruby",
+    });
+  });
 });
 
 describe("scaffold with database", () => {
@@ -74,7 +98,6 @@ describe("scaffold with database", () => {
       skipGit: true,
     });
 
-    // prisma/schema.prisma exists
     const schema = fs.readFileSync(
       path.join(targetDir, "prisma", "schema.prisma"),
       "utf-8",
@@ -82,7 +105,6 @@ describe("scaffold with database", () => {
     expect(schema).toContain('provider = "postgresql"');
     expect(schema).toContain("model User");
 
-    // src/lib/db.js exists (JS, not TS)
     const db = fs.readFileSync(
       path.join(targetDir, "src", "lib", "db.js"),
       "utf-8",
@@ -90,7 +112,6 @@ describe("scaffold with database", () => {
     expect(db).toContain("PrismaClient");
     expect(db).toContain("require");
 
-    // package.json has prisma deps and scripts
     const pkg = JSON.parse(
       fs.readFileSync(path.join(targetDir, "package.json"), "utf-8"),
     );
@@ -99,7 +120,6 @@ describe("scaffold with database", () => {
     expect(pkg.scripts["db:migrate"]).toBe("prisma migrate dev");
     expect(pkg.scripts["db:studio"]).toBe("prisma studio");
 
-    // .env.example exists
     const envExample = fs.readFileSync(
       path.join(targetDir, ".env.example"),
       "utf-8",
@@ -120,7 +140,6 @@ describe("scaffold with database", () => {
       skipGit: true,
     });
 
-    // src/lib/db.ts exists (TypeScript)
     const db = fs.readFileSync(
       path.join(targetDir, "src", "lib", "db.ts"),
       "utf-8",
@@ -143,12 +162,10 @@ describe("scaffold with database", () => {
       skipGit: true,
     });
 
-    // go.mod has gorm dependencies
     const goMod = fs.readFileSync(path.join(targetDir, "go.mod"), "utf-8");
     expect(goMod).toContain("gorm.io/gorm");
     expect(goMod).toContain("gorm.io/driver/postgres");
 
-    // internal/database/database.go exists
     const dbFile = fs.readFileSync(
       path.join(targetDir, "internal", "database", "database.go"),
       "utf-8",
@@ -157,14 +174,12 @@ describe("scaffold with database", () => {
     expect(dbFile).toContain("gorm.Open");
     expect(dbFile).toContain("DATABASE_URL");
 
-    // internal/models/user.go exists
     const model = fs.readFileSync(
       path.join(targetDir, "internal", "models", "user.go"),
       "utf-8",
     );
     expect(model).toContain("type User struct");
 
-    // .env.example exists
     expect(fs.existsSync(path.join(targetDir, ".env.example"))).toBe(true);
   });
 
@@ -181,7 +196,6 @@ describe("scaffold with database", () => {
       skipGit: true,
     });
 
-    // requirements.txt has sqlalchemy deps
     const reqs = fs.readFileSync(
       path.join(targetDir, "requirements.txt"),
       "utf-8",
@@ -190,7 +204,6 @@ describe("scaffold with database", () => {
     expect(reqs).toContain("psycopg2-binary");
     expect(reqs).toContain("alembic");
 
-    // database.py exists
     const dbFile = fs.readFileSync(
       path.join(targetDir, "database.py"),
       "utf-8",
@@ -199,7 +212,6 @@ describe("scaffold with database", () => {
     expect(dbFile).toContain("DATABASE_URL");
     expect(dbFile).toContain("DeclarativeBase");
 
-    // models.py exists
     const models = fs.readFileSync(
       path.join(targetDir, "models.py"),
       "utf-8",
@@ -207,8 +219,71 @@ describe("scaffold with database", () => {
     expect(models).toContain("class User");
     expect(models).toContain("__tablename__");
 
-    // .env.example exists
     expect(fs.existsSync(path.join(targetDir, ".env.example"))).toBe(true);
+  });
+
+  it("adds Diesel to rust-axum template", () => {
+    const template = getTemplate("rust-axum")!;
+    const targetDir = path.join(tempDir, "rust-db");
+
+    scaffold({
+      projectName: "rust-db",
+      template,
+      targetDir,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const cargo = fs.readFileSync(path.join(targetDir, "Cargo.toml"), "utf-8");
+    expect(cargo).toContain("diesel");
+
+    expect(fs.existsSync(path.join(targetDir, "src", "db.rs"))).toBe(true);
+  });
+
+  it("adds Spring Data JPA to java-spring template", () => {
+    const template = getTemplate("java-spring")!;
+    const targetDir = path.join(tempDir, "java-db");
+
+    scaffold({
+      projectName: "java-db",
+      template,
+      targetDir,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const gradle = fs.readFileSync(path.join(targetDir, "build.gradle.kts"), "utf-8");
+    expect(gradle).toContain("spring-boot-starter-data-jpa");
+    expect(gradle).toContain("postgresql");
+
+    expect(fs.existsSync(
+      path.join(targetDir, "src", "main", "java", "com", "theo", "app", "entity", "User.java"),
+    )).toBe(true);
+    expect(fs.existsSync(
+      path.join(targetDir, "src", "main", "java", "com", "theo", "app", "repository", "UserRepository.java"),
+    )).toBe(true);
+  });
+
+  it("adds Sequel to ruby-sinatra template", () => {
+    const template = getTemplate("ruby-sinatra")!;
+    const targetDir = path.join(tempDir, "ruby-db");
+
+    scaffold({
+      projectName: "ruby-db",
+      template,
+      targetDir,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const gemfile = fs.readFileSync(path.join(targetDir, "Gemfile"), "utf-8");
+    expect(gemfile).toContain("sequel");
+    expect(gemfile).toContain("pg");
+
+    expect(fs.existsSync(path.join(targetDir, "database.rb"))).toBe(true);
   });
 
   it("does not add database when database is false", () => {

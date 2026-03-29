@@ -12,7 +12,7 @@ import {
   hasFrontend,
   type StylingOption,
 } from "./styling.js";
-import { supportsDatabase, getOrmForLanguage } from "./database.js";
+import { supportsDatabase, getOrmForLanguage, type Language } from "./database.js";
 import {
   getAvailableAddons,
   resolveAddonDependencies,
@@ -116,7 +116,7 @@ export async function promptUser(
     if (databaseArg !== undefined) {
       database = databaseArg;
     } else if (!isCI) {
-      const orm = getOrmForLanguage(template.language);
+      const orm = getOrmForLanguage(template.language as Language);
       database = await confirm({
         message: `Add a PostgreSQL database? (via ${orm.name})`,
         default: false,

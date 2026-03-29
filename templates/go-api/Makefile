@@ -1,4 +1,4 @@
-.PHONY: fmt lint vet run
+.PHONY: fmt lint vet test run
 
 fmt:
 	go fmt ./...
@@ -8,6 +8,9 @@ lint:
 
 vet:
 	go vet ./...
+
+test:
+	go test ./...
 
 run:
 	go run .

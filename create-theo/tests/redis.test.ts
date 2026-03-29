@@ -72,6 +72,38 @@ describe("scaffold with redis", () => {
     expect(reqs).toContain("redis");
   });
 
+  it("adds redis to rust-axum", () => {
+    const template = getTemplate("rust-axum")!;
+    const targetDir = path.join(tempDir, "redis-rust");
+
+    scaffold({ projectName: "redis-rust", template, targetDir, addons: ["redis"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "src", "cache.rs"))).toBe(true);
+    const cargo = fs.readFileSync(path.join(targetDir, "Cargo.toml"), "utf-8");
+    expect(cargo).toContain("[dependencies.redis]");
+  });
+
+  it("adds redis to java-spring", () => {
+    const template = getTemplate("java-spring")!;
+    const targetDir = path.join(tempDir, "redis-java");
+
+    scaffold({ projectName: "redis-java", template, targetDir, addons: ["redis"], skipInstall: true, skipGit: true });
+
+    const gradle = fs.readFileSync(path.join(targetDir, "build.gradle.kts"), "utf-8");
+    expect(gradle).toContain("spring-boot-starter-data-redis");
+  });
+
+  it("adds redis to ruby-sinatra", () => {
+    const template = getTemplate("ruby-sinatra")!;
+    const targetDir = path.join(tempDir, "redis-ruby");
+
+    scaffold({ projectName: "redis-ruby", template, targetDir, addons: ["redis"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "cache.rb"))).toBe(true);
+    const gemfile = fs.readFileSync(path.join(targetDir, "Gemfile"), "utf-8");
+    expect(gemfile).toContain("redis");
+  });
+
   it("merges redis and postgres in docker-compose", () => {
     const template = getTemplate("node-express")!;
     const targetDir = path.join(tempDir, "redis-db");
