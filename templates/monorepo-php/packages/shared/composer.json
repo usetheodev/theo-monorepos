@@ -1,0 +1,10 @@
+{
+  "name": "theo/shared",
+  "description": "Shared utilities",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "Shared\\": "src/"
+    }
+  }
+}

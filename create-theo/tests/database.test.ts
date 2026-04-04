@@ -286,6 +286,24 @@ describe("scaffold with database", () => {
     expect(fs.existsSync(path.join(targetDir, "database.rb"))).toBe(true);
   });
 
+  it("adds Doctrine to php-slim template", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "php-db");
+
+    scaffold({
+      projectName: "php-db",
+      template,
+      targetDir,
+      database: true,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    const composer = fs.readFileSync(path.join(targetDir, "composer.json"), "utf-8");
+    expect(composer).toContain("doctrine/dbal");
+    expect(fs.existsSync(path.join(targetDir, "src", "database.php"))).toBe(true);
+  });
+
   it("does not add database when database is false", () => {
     const template = getTemplate("node-express")!;
     const targetDir = path.join(tempDir, "no-db");

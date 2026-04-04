@@ -4,7 +4,7 @@ export interface TemplateInfo {
   id: string;
   name: string;
   description: string;
-  language: "node" | "go" | "python" | "rust" | "java" | "ruby";
+  language: "node" | "go" | "python" | "rust" | "java" | "ruby" | "php";
   type: TemplateType;
   defaultPort: number | null;
 }
@@ -133,6 +133,46 @@ export const templates: TemplateInfo[] = [
     language: "python",
     type: "monorepo",
     defaultPort: null,
+  },
+  {
+    id: "monorepo-rust",
+    name: "Monorepo — Rust (Cargo)",
+    description: "Cargo workspace with Axum API + Worker + shared crate",
+    language: "rust",
+    type: "monorepo",
+    defaultPort: null,
+  },
+  {
+    id: "monorepo-java",
+    name: "Monorepo — Java (Gradle)",
+    description: "Gradle multi-project with Spring Boot API + Worker + shared",
+    language: "java",
+    type: "monorepo",
+    defaultPort: null,
+  },
+  {
+    id: "monorepo-ruby",
+    name: "Monorepo — Ruby",
+    description: "Bundler multi-app with Sinatra API + Worker + shared",
+    language: "ruby",
+    type: "monorepo",
+    defaultPort: null,
+  },
+  {
+    id: "monorepo-php",
+    name: "Monorepo — PHP (Composer)",
+    description: "Composer multi-app with Slim API + Worker + shared",
+    language: "php",
+    type: "monorepo",
+    defaultPort: null,
+  },
+  {
+    id: "php-slim",
+    name: "PHP — Slim",
+    description: "Slim Framework API server",
+    language: "php",
+    type: "api",
+    defaultPort: 8000,
   },
 ];
 

@@ -1,0 +1,34 @@
+{
+  "name": "theo/{{project-name}}",
+  "description": "PHP monorepo scaffolded by Theo",
+  "type": "project",
+  "require": {
+    "php": ">=8.2",
+    "slim/slim": "^4.0",
+    "slim/psr7": "^1.0",
+    "monolog/monolog": "^3.0",
+    "theo/shared": "*"
+  },
+  "require-dev": {
+    "phpstan/phpstan": "^1.0",
+    "squizlabs/php_codesniffer": "^3.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "packages/shared"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Api\\": "apps/api/src/",
+      "Worker\\": "apps/worker/src/"
+    }
+  },
+  "scripts": {
+    "api": "php -S 0.0.0.0:8000 -t apps/api/public",
+    "worker": "php apps/worker/worker.php",
+    "lint": "phpstan analyse apps packages --level=5",
+    "cs": "phpcs --standard=PSR12 apps/ packages/"
+  }
+}

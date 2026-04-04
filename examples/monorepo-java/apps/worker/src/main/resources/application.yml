@@ -1,0 +1,11 @@
+server:
+  port: ${PORT:8081}
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 10s
+
+logging:
+  pattern:
+    console: '{"time":"%d{ISO8601}","level":"%p","logger":"%logger","message":"%m"}%n'

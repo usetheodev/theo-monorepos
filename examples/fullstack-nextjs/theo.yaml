@@ -1,0 +1,9 @@
+version: 1
+project: "fullstack-nextjs"
+
+apps:
+  web:
+    path: .
+    framework: nextjs
+    type: frontend
+    render: server

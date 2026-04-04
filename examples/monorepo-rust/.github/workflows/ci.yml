@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build
+      - run: cargo clippy -- -D warnings
+      - run: cargo fmt --check
+
+  # deploy:
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Theo CLI
+  #       run: npm install -g @usetheo/cli
+  #     - name: Deploy
+  #       run: theo deploy --yes
+  #       env:
+  #         THEO_TOKEN: ${{ secrets.THEO_TOKEN }}

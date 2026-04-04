@@ -1,0 +1,15 @@
+version: 1
+project: "monorepo-java"
+
+apps:
+  api:
+    path: apps/api
+    framework: spring-boot
+    type: server
+    port: 8080
+
+  worker:
+    path: apps/worker
+    framework: spring-boot
+    type: worker
+    port: 8081

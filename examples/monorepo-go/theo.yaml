@@ -1,0 +1,15 @@
+version: 1
+project: "monorepo-go"
+
+apps:
+  api:
+    path: apps/api
+    framework: custom
+    type: server
+    port: 8080
+
+  worker:
+    path: apps/worker
+    framework: custom
+    type: worker
+    port: 8081

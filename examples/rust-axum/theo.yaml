@@ -1,0 +1,9 @@
+version: 1
+project: "rust-axum"
+
+apps:
+  api:
+    path: .
+    framework: axum
+    type: server
+    port: 8080

@@ -1,0 +1,9 @@
+version: 1
+project: "java-spring"
+
+apps:
+  api:
+    path: .
+    framework: spring-boot
+    type: server
+    port: 8080

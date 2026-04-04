@@ -29,7 +29,7 @@ export function getAvailableAddons(
       case "queue":
         return (
           (templateType === "api" || templateType === "worker") &&
-          ["node", "go", "python"].includes(language)
+          ["node", "go", "python", "php"].includes(language)
         );
       default:
         return false;

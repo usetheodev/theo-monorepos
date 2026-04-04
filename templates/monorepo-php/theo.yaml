@@ -1,0 +1,15 @@
+version: 1
+project: "{{project-name}}"
+
+apps:
+  api:
+    path: apps/api
+    framework: slim
+    type: server
+    port: 8000
+
+  worker:
+    path: apps/worker
+    framework: custom
+    type: worker
+    port: 8001

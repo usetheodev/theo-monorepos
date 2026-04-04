@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+      - run: composer install --no-interaction
+      - run: composer lint --no-interaction || true
+
+  # deploy:
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Theo CLI
+  #       run: npm install -g @usetheo/cli
+  #     - name: Deploy
+  #       run: theo deploy --yes
+  #       env:
+  #         THEO_TOKEN: ${{ secrets.THEO_TOKEN }}

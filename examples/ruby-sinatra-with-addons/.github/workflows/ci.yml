@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+      - run: bundle install
+      - run: bundle exec rubocop --format simple
+
+  # deploy:
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Theo CLI
+  #       run: npm install -g @usetheo/cli
+  #     - name: Deploy
+  #       run: theo deploy --yes
+  #       env:
+  #         THEO_TOKEN: ${{ secrets.THEO_TOKEN }}

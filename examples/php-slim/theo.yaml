@@ -1,0 +1,9 @@
+version: 1
+project: "php-slim"
+
+apps:
+  api:
+    path: .
+    framework: slim
+    type: server
+    port: 8000

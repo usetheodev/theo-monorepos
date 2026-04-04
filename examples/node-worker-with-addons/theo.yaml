@@ -1,0 +1,9 @@
+version: 1
+project: "node-worker-with-addons"
+
+apps:
+  worker:
+    path: .
+    framework: custom
+    type: worker
+    port: 3000

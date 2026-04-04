@@ -1,0 +1,12 @@
+desc "Run API"
+task :api do
+  sh "cd apps/api && bundle exec rackup"
+end
+
+desc "Run Worker"
+task :worker do
+  sh "cd apps/worker && ruby worker.rb"
+end
+
+desc "Run all"
+task default: [:api]

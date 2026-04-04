@@ -211,7 +211,7 @@ describe("scaffold", () => {
     expect(fs.existsSync(path.join(targetDir, "next.config.js"))).toBe(true);
   });
 
-  it("scaffolds all 14 templates without error", () => {
+  it("scaffolds all 19 templates without error", () => {
     const templateIds = listTemplateIds();
 
     for (const id of templateIds) {
@@ -338,6 +338,103 @@ describe("scaffold", () => {
 
     const rootToml = fs.readFileSync(path.join(targetDir, "pyproject.toml"), "utf-8");
     expect(rootToml).toContain("[tool.uv.workspace]");
+  });
+
+  it("monorepo-rust has correct structure", () => {
+    const template = getTemplate("monorepo-rust")!;
+    const targetDir = path.join(tempDir, "mono-rust");
+
+    scaffold({
+      projectName: "mono-rust",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "Cargo.toml"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "src", "main.rs"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "src", "main.rs"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "pkg", "shared", "src", "lib.rs"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "Makefile"))).toBe(true);
+  });
+
+  it("monorepo-java has correct structure", () => {
+    const template = getTemplate("monorepo-java")!;
+    const targetDir = path.join(tempDir, "mono-java");
+
+    scaffold({
+      projectName: "mono-java",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "settings.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "build.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "build.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "build.gradle.kts"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "packages", "shared", "src", "main", "java", "com", "theo", "shared", "AppInfo.java"))).toBe(true);
+  });
+
+  it("monorepo-ruby has correct structure", () => {
+    const template = getTemplate("monorepo-ruby")!;
+    const targetDir = path.join(tempDir, "mono-ruby");
+
+    scaffold({
+      projectName: "mono-ruby",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "Gemfile"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "Rakefile"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "app.rb"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "worker.rb"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "packages", "shared", "shared.rb"))).toBe(true);
+  });
+
+  it("monorepo-php has correct structure", () => {
+    const template = getTemplate("monorepo-php")!;
+    const targetDir = path.join(tempDir, "mono-php");
+
+    scaffold({
+      projectName: "mono-php",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "composer.json"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "api", "public", "index.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "apps", "worker", "worker.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "packages", "shared", "src", "AppInfo.php"))).toBe(true);
+  });
+
+  it("php-slim has production-ready files", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "prod-php");
+
+    scaffold({
+      projectName: "prod-php",
+      template,
+      targetDir,
+      skipInstall: true,
+      skipGit: true,
+    });
+
+    expect(fs.existsSync(path.join(targetDir, "composer.json"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "public", "index.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "src", "routes.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "src", "Middleware", "CorsMiddleware.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, ".github", "workflows", "ci.yml"))).toBe(true);
+
+    const ci = fs.readFileSync(path.join(targetDir, ".github", "workflows", "ci.yml"), "utf-8");
+    expect(ci).toContain("setup-php");
   });
 });
 

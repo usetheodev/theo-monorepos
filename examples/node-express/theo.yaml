@@ -1,0 +1,9 @@
+version: 1
+project: "node-express"
+
+apps:
+  api:
+    path: .
+    framework: express
+    type: server
+    port: 3000

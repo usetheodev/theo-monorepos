@@ -1,0 +1,3 @@
+[workspace]
+members = ["apps/api", "apps/worker", "pkg/shared"]
+resolver = "2"
