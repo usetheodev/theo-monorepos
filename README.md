@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  Production-ready project scaffolding for Node.js, Go, Python, Rust, Java, and Ruby. Deploy anywhere.
+  Production-ready project scaffolding for Node.js, Go, Python, Rust, Java, Ruby, and PHP. Deploy anywhere.
 </p>
 
 <p align="center">
@@ -45,32 +45,54 @@ bun create theo
 
 ## Templates
 
+### API / Backend
+
+| Template | Stack | Default Port |
+|----------|-------|:------------:|
+| `node-express` | Node.js + Express | 3000 |
+| `node-fastify` | Node.js + Fastify | 3000 |
+| `node-nestjs` | NestJS (TypeScript) | 3000 |
+| `go-api` | Go stdlib (net/http) | 8080 |
+| `python-fastapi` | Python + FastAPI | 8000 |
+| `rust-axum` | Rust + Axum + Tokio | 8080 |
+| `java-spring` | Java + Spring Boot | 8080 |
+| `ruby-sinatra` | Ruby + Sinatra + Puma | 4567 |
+| `php-slim` | PHP + Slim Framework | 8000 |
+
+### Frontend / Fullstack
+
 | Template | Stack | Type | Default Port |
 |----------|-------|------|:------------:|
-| `node-express` | Node.js + Express | API | 3000 |
-| `node-fastify` | Node.js + Fastify | API | 3000 |
 | `node-nextjs` | Next.js (App Router) | Frontend / SSR | 3000 |
-| `node-nestjs` | NestJS (TypeScript) | API | 3000 |
-| `node-worker` | Node.js | Background Worker | 3000 |
-| `go-api` | Go stdlib (net/http) | API | 8080 |
-| `python-fastapi` | Python + FastAPI | API | 8000 |
-| `rust-axum` | Rust + Axum + Tokio | API | 8080 |
-| `java-spring` | Java + Spring Boot | API | 8080 |
-| `ruby-sinatra` | Ruby + Sinatra + Puma | API | 4567 |
 | `fullstack-nextjs` | Next.js + API Routes | Fullstack | 3000 |
-| `monorepo-turbo` | Turborepo (Express + Next.js) | Monorepo | 3001 / 3002 |
-| `monorepo-go` | Go Workspaces (API + Worker) | Monorepo | 8080 / 8081 |
-| `monorepo-python` | uv Workspace (FastAPI + Worker) | Monorepo | 8000 / 8001 |
 
-Every template is production-ready out of the box: CORS, structured JSON logging, error handling, graceful shutdown, health endpoint (`GET /health`), linting, and a CI workflow.
+### Monorepo
+
+| Template | Stack | Apps | Ports |
+|----------|-------|------|:-----:|
+| `monorepo-turbo` | Turborepo (Express + Next.js) | API + Web | 3001 / 3002 |
+| `monorepo-go` | Go Workspaces | API + Worker | 8080 / 8081 |
+| `monorepo-python` | uv Workspace (FastAPI + Worker) | API + Worker | 8000 / 8001 |
+| `monorepo-rust` | Cargo Workspaces (Axum + Tokio) | API + Worker | 8080 / 8081 |
+| `monorepo-java` | Gradle multi-project (Spring Boot) | API + Worker | 8080 / 8081 |
+| `monorepo-ruby` | Bundler (Sinatra + WEBrick) | API + Worker | 4567 / 4568 |
+| `monorepo-php` | Composer (Slim + CLI) | API + Worker | 8000 / 8001 |
+
+### Worker
+
+| Template | Stack | Default Port |
+|----------|-------|:------------:|
+| `node-worker` | Node.js | 3000 |
+
+Every template is production-ready out of the box: CORS, structured JSON logging, error handling, graceful shutdown, health endpoints (`GET /health` + `GET /ready`), Dockerfile, linting, example test, and a CI workflow.
 
 ## CLI Options
 
 | Flag | Description |
 |------|-------------|
-| `--template`, `-t` | Skip template prompt (`node-express`, `go-api`, etc.) |
+| `--template`, `-t` | Skip template prompt (`node-express`, `go-api`, `php-slim`, etc.) |
 | `--styling`, `-s` | Styling for frontend templates (`tailwind`, `shadcn`, `daisyui`, etc.) |
-| `--database`, `-d` | Add PostgreSQL with ORM (Prisma, GORM, SQLAlchemy, Diesel, Spring Data JPA, or Sequel) |
+| `--database`, `-d` | Add PostgreSQL with ORM (Prisma, GORM, SQLAlchemy, Diesel, Spring Data JPA, Sequel, or Doctrine) |
 | `--add`, `-a` | Add modules: `redis`, `auth-jwt`, `auth-oauth`, `queue` (comma-separated) |
 | `--help` | Show help |
 
@@ -90,6 +112,9 @@ npm create theo@latest my-app -t node-express -d --add redis,auth-jwt,queue
 # With OAuth/OIDC instead of JWT
 npm create theo@latest my-app -t go-api --add auth-oauth
 
+# PHP with all addons
+npm create theo@latest my-app -t php-slim -d --add redis,auth-jwt,queue
+
 # CI mode (no prompts, no install, no git init)
 CI=true npx create-theo my-app --template node-express
 ```
@@ -100,21 +125,21 @@ Composable modules added at scaffold time via `--add` or interactive checkbox pr
 
 | Module | What it generates | Languages |
 |--------|-------------------|-----------|
-| `redis` | Redis client + connection helper + docker-compose service | Node.js, Go, Python, Rust, Java, Ruby |
-| `auth-jwt` | JWT middleware + token generation helpers | Node.js, Go, Python, Rust, Java, Ruby |
-| `auth-oauth` | OAuth/OIDC token validation middleware | Node.js, Go, Python, Rust, Java, Ruby |
-| `queue` | Job queue + worker setup (auto-includes Redis) | Node.js (BullMQ), Go (Asynq), Python (arq) |
+| `redis` | Redis client + connection helper + docker-compose service | Node.js, Go, Python, Rust, Java, Ruby, PHP |
+| `auth-jwt` | JWT middleware + token generation helpers | Node.js, Go, Python, Rust, Java, Ruby, PHP |
+| `auth-oauth` | OAuth/OIDC token validation middleware | Node.js, Go, Python, Rust, Java, Ruby, PHP |
+| `queue` | Job queue + worker setup (auto-includes Redis) | Node.js (BullMQ), Go (Asynq), Python (arq), PHP (Symfony Messenger) |
 
 `auth-jwt` and `auth-oauth` are mutually exclusive — pick one or the other.
 
 ### Generated per language
 
-| Module | Node.js | Go | Python | Rust | Java | Ruby |
-|--------|---------|-----|--------|------|------|------|
-| Redis | ioredis | go-redis | redis-py | redis crate | Spring Data Redis | redis gem |
-| Auth JWT | jsonwebtoken | golang-jwt | pyjwt | jsonwebtoken crate | JJWT | ruby-jwt |
-| Auth OAuth | openid-client | go-oidc | authlib | openidconnect | Spring OAuth2 | omniauth |
-| Queue | BullMQ | Asynq | arq | — | — | — |
+| Module | Node.js | Go | Python | Rust | Java | Ruby | PHP |
+|--------|---------|-----|--------|------|------|------|-----|
+| Redis | ioredis | go-redis | redis-py | redis crate | Spring Data Redis | redis gem | Predis |
+| Auth JWT | jsonwebtoken | golang-jwt | pyjwt | jsonwebtoken crate | JJWT | ruby-jwt | firebase/php-jwt |
+| Auth OAuth | openid-client | go-oidc | authlib | openidconnect | Spring OAuth2 | omniauth | Guzzle |
+| Queue | BullMQ | Asynq | arq | — | — | — | Symfony Messenger |
 
 Framework-specific variants: Fastify uses `src/plugins/auth.js` with fastify-plugin, NestJS uses `src/guards/auth.guard.ts` with `@Injectable`.
 
@@ -130,6 +155,7 @@ Pass `--database` to get a fully configured database layer:
 | Rust | Diesel | Connection helper, config |
 | Java | Spring Data JPA | Entity, Repository, auto-DDL |
 | Ruby | Sequel | Connection, User model |
+| PHP | Doctrine DBAL | Connection helper |
 
 All database setups include:
 - `docker-compose.yml` with Postgres 16 (healthcheck, persistent volume)
@@ -140,22 +166,48 @@ When combined with `--add redis`, both Postgres and Redis appear in the same `do
 
 ## What's Included in Every Template
 
-| Feature | Node.js | Go | Python | Rust | Java | Ruby |
-|---------|---------|-----|--------|------|------|------|
-| CORS | `cors` / `@fastify/cors` | stdlib middleware | `CORSMiddleware` | `tower-http` | `WebMvcConfigurer` | Sinatra headers |
-| Structured logging | `pino-http` (JSON) | `log/slog` (JSON) | stdlib `logging` (JSON) | `tracing` | Logback JSON | Logger JSON |
-| Error handling | Central middleware + 404 | Recovery middleware | Exception handler | Axum fallback | `@ControllerAdvice` | Sinatra `error` block |
-| Graceful shutdown | SIGTERM/SIGINT | `http.Server.Shutdown` | FastAPI lifespan | `tokio::signal` | Spring `shutdown: graceful` | Puma workers |
-| Linting | ESLint 9 + Prettier | Makefile (go vet/fmt) | ruff (pyproject.toml) | rustfmt + clippy | Gradle build | RuboCop |
-| CI | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions | GitHub Actions |
-| Health check | `GET /health` | `GET /health` | `GET /health` | `GET /health` | `GET /health` | `GET /health` |
+| Feature | Implementation |
+|---------|---------------|
+| **CORS** | Language-native middleware (cors, CORSMiddleware, tower-http, etc.) |
+| **Structured logging** | JSON output (pino, slog, logging, tracing, Logback, etc.) |
+| **Error handling** | Central middleware + 404 handler |
+| **Graceful shutdown** | SIGTERM/SIGINT handlers with timeout |
+| **Health check** | `GET /health` — liveness probe |
+| **Readiness check** | `GET /ready` — readiness probe (customize for dependency checks) |
+| **Dockerfile** | Production-optimized, multi-stage where applicable |
+| **`.dockerignore`** | Language-specific exclusions |
+| **Example test** | Health endpoint test (Jest, Go testing, pytest, cargo test, JUnit, Minitest, PHPUnit) |
+| **Linting** | ESLint, go vet, ruff, clippy, Spotless, RuboCop, PHPStan |
+| **CI** | GitHub Actions workflow |
+| **`theo.yaml`** | Project config with standardized `commands` section |
+
+### `theo.yaml` Commands
+
+Every template includes a `commands` section in `theo.yaml` — standardized wrappers that abstract language-specific tooling:
+
+```yaml
+commands:
+  dev: "npm run dev"        # Start development server
+  build: "npm run build"    # Build for production
+  test: "npm test"          # Run tests
+  lint: "npm run lint"      # Run linter
+  format: "npm run format"  # Format code
+  security: "npm audit"     # Security audit
+```
+
+| Command | Node.js | Go | Python | Rust | Java | Ruby | PHP |
+|---------|---------|-----|--------|------|------|------|-----|
+| `security` | `npm audit` | `govulncheck` | `pip-audit` | `cargo audit` | `dependencyCheckAnalyze` | `bundle audit` | `composer audit` |
+
+Monorepo templates include per-app commands under each app definition.
 
 ## Why create-theo?
 
-- **Production-ready from day one.** CORS, structured logging, error handling, graceful shutdown, linting — the things every project needs but nobody wants to configure. Not hello world.
-- **One CLI, any stack.** Node.js, Go, Python — same experience. Pick your language and get a real project, not a toy.
+- **Production-ready from day one.** CORS, structured logging, error handling, graceful shutdown, Dockerfile, tests, linting — the things every project needs but nobody wants to configure. Not hello world.
+- **One CLI, 7 languages.** Node.js, Go, Python, Rust, Java, Ruby, PHP — same experience. Pick your language and get a real project, not a toy.
 - **Composable modules.** Add Redis, JWT auth, or job queues with a flag. Get working code with docker-compose, not boilerplate stubs.
 - **Database-ready.** Pass `--database` and get a connected ORM, docker-compose with Postgres, and migration scripts.
+- **Kubernetes-native.** Every template ships with `/health` (liveness) and `/ready` (readiness) probes, Dockerfile, and graceful shutdown.
 - **Deploy anywhere.** Every template works with [Theo](https://usetheo.dev), Docker, Railway, Fly.io, or any container platform. No vendor lock-in.
 
 ## Prerequisites
@@ -171,12 +223,13 @@ We welcome contributions! Whether it's a new template, a module, a bug fix, or d
 ### Adding a template
 
 1. Create `templates/<template-id>/` with all required files
-2. Include `theo.yaml`, `GET /health`, `PORT` env support, `gitignore` (without dot), and `README.md`
-3. Add CORS, structured logging, error handling, and graceful shutdown
-4. Add ESLint + Prettier config (Node) or equivalent linting setup
-5. Use `{{project-name}}` as the placeholder everywhere the project name appears
-6. Register it in `create-theo/src/templates.ts`
-7. Run the validation suite:
+2. Include `theo.yaml` (with `commands` section), `Dockerfile`, `dockerignore` (without dot), `gitignore` (without dot), and `README.md`
+3. Implement `GET /health`, `GET /ready`, `PORT` env support
+4. Add CORS, structured JSON logging, error handling, and graceful shutdown
+5. Add linting config and at least one example test
+6. Use `{{project-name}}` as the placeholder everywhere the project name appears
+7. Register it in `create-theo/src/templates.ts`
+8. Run the validation suite:
 
 ```bash
 cd create-theo && npm install && npm test
@@ -189,18 +242,19 @@ bash scripts/validate-templates.sh
 # Install and build the CLI
 cd create-theo && npm install && npm run build
 
-# Run tests (115 tests across 11 suites)
+# Run tests (184 tests across 11 suites)
 npm test
 
 # Watch mode
 npm run dev
+
+# Full smoke test (requires all runtimes)
+bash scripts/test-all-templates.sh
 ```
 
-## Known Limitations
+## Examples
 
-- **Queue addon**: Node.js, Go, Python only
-- **OAuth addon**: Node.js, Go, Python, Java only
-- **Styling**: Frontend templates only (node-nextjs, fullstack-nextjs, monorepo-turbo)
+The `examples/` directory contains 29 scaffolded projects generated by the CLI — 19 clean templates + 10 with addons (database, Redis, auth, queue). Browse them to see exactly what `create-theo` generates.
 
 ## License
 

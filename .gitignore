@@ -11,6 +11,7 @@ tmp-tmp-*/
 *.log
 coverage/
 .jest-cache/
+CLAUDE.md
 
 # Environment
 .env
