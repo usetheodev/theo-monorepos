@@ -104,6 +104,17 @@ describe("scaffold with redis", () => {
     expect(gemfile).toContain("redis");
   });
 
+  it("adds redis to php-slim", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "redis-php");
+
+    scaffold({ projectName: "redis-php", template, targetDir, addons: ["redis"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "src", "cache.php"))).toBe(true);
+    const composer = fs.readFileSync(path.join(targetDir, "composer.json"), "utf-8");
+    expect(composer).toContain("predis");
+  });
+
   it("merges redis and postgres in docker-compose", () => {
     const template = getTemplate("node-express")!;
     const targetDir = path.join(tempDir, "redis-db");

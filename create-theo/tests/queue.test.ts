@@ -89,6 +89,19 @@ describe("scaffold with queue", () => {
     expect(worker).toContain("WorkerSettings");
   });
 
+  it("adds queue (symfony/messenger) to php-slim", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "queue-php");
+
+    scaffold({ projectName: "queue-php", template, targetDir, addons: ["redis", "queue"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "src", "Message", "ExampleMessage.php"))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, "src", "Message", "ExampleHandler.php"))).toBe(true);
+
+    const composer = fs.readFileSync(path.join(targetDir, "composer.json"), "utf-8");
+    expect(composer).toContain("symfony/messenger");
+  });
+
   it("combines all addons + database", () => {
     const template = getTemplate("node-express")!;
     const targetDir = path.join(tempDir, "all-addons");

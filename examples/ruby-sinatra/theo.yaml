@@ -1,0 +1,9 @@
+version: 1
+project: "ruby-sinatra"
+
+apps:
+  api:
+    path: .
+    framework: sinatra
+    type: server
+    port: 4567

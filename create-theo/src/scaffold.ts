@@ -44,6 +44,7 @@ const TEXT_EXTENSIONS = new Set([
   ".xml",
   ".ru",
   ".work",
+  ".php",
 ]);
 
 export interface ScaffoldOptions {
@@ -142,7 +143,12 @@ function copyDir(src: string, dest: string, projectName: string): void {
       const destPath = path.join(dest, entry.name);
       copyDir(srcPath, destPath, projectName);
     } else {
-      const destName = entry.name === "gitignore" ? ".gitignore" : entry.name;
+      const destName =
+        entry.name === "gitignore"
+          ? ".gitignore"
+          : entry.name === "dockerignore"
+            ? ".dockerignore"
+            : entry.name;
       const destPath = path.join(dest, destName);
       copyFile(srcPath, destPath, projectName);
     }
@@ -172,7 +178,9 @@ function isTextFile(ext: string, basename: string): boolean {
     basename === "Makefile" ||
     basename === "Gemfile" ||
     basename === ".rubocop.yml" ||
-    basename === "Rakefile"
+    basename === "Rakefile" ||
+    basename === "Procfile" ||
+    basename === "dockerignore"
   );
 }
 
@@ -849,6 +857,8 @@ function buildCIWorkflow(template: TemplateInfo): string {
       return buildJavaCI();
     case "ruby":
       return buildRubyCI();
+    case "php":
+      return buildPhpCI();
     default:
       return buildNodeCI(template);
   }
@@ -1101,6 +1111,9 @@ function applyDatabase(targetDir: string, template: TemplateInfo): void {
     case "ruby":
       applySequel(targetDir);
       break;
+    case "php":
+      applyDoctrine(targetDir);
+      break;
   }
 }
 
@@ -1210,6 +1223,9 @@ function applyRedis(targetDir: string, template: TemplateInfo): void {
       break;
     case "ruby":
       applyRedisRuby(targetDir);
+      break;
+    case "php":
+      applyRedisPhp(targetDir);
       break;
   }
 }
@@ -1330,6 +1346,9 @@ function applyAuth(targetDir: string, template: TemplateInfo): void {
       break;
     case "ruby":
       applyAuthRuby(targetDir);
+      break;
+    case "php":
+      applyAuthPhp(targetDir);
       break;
   }
 }
@@ -1590,6 +1609,9 @@ function applyQueue(targetDir: string, template: TemplateInfo): void {
       break;
     case "python":
       applyQueuePython(targetDir);
+      break;
+    case "php":
+      applyQueuePhp(targetDir);
       break;
   }
 }
@@ -2374,6 +2396,9 @@ function applyAuthOAuth(targetDir: string, template: TemplateInfo): void {
     case "ruby":
       applyAuthOAuthRuby(targetDir);
       break;
+    case "php":
+      applyAuthOAuthPhp(targetDir);
+      break;
   }
 }
 
@@ -2714,6 +2739,309 @@ def authenticate_oauth!(request)
   halt 401, { error: "Invalid token" }.to_json unless res.is_a?(Net::HTTPOK)
   JSON.parse(res.body)
 end
+`,
+  );
+}
+
+// --- PHP CI ---
+
+function buildPhpCI(): string {
+  return `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+      - run: composer install --no-interaction
+      - run: composer lint --no-interaction || true
+
+  # deploy:
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Theo CLI
+  #       run: npm install -g @usetheo/cli
+  #     - name: Deploy
+  #       run: theo deploy --yes
+  #       env:
+  #         THEO_TOKEN: \${{ secrets.THEO_TOKEN }}
+`;
+}
+
+// --- Doctrine (PHP) ---
+
+function applyDoctrine(targetDir: string): void {
+  const composerPath = path.join(targetDir, "composer.json");
+  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+
+  composer.require = {
+    ...composer.require,
+    "doctrine/dbal": "^4.0",
+    "doctrine/orm": "^3.0",
+  };
+
+  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+
+  const srcDir = path.join(targetDir, "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(srcDir, "database.php"),
+    `<?php
+
+declare(strict_types=1);
+
+use Doctrine\\DBAL\\DriverManager;
+
+$databaseUrl = getenv('DATABASE_URL') ?: 'pdo-pgsql://postgres:postgres@localhost:5432/mydb';
+
+$connection = DriverManager::getConnection(['url' => $databaseUrl]);
+`,
+  );
+}
+
+// --- Redis (PHP) ---
+
+function applyRedisPhp(targetDir: string): void {
+  const composerPath = path.join(targetDir, "composer.json");
+  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+
+  composer.require = {
+    ...composer.require,
+    "predis/predis": "^2.0",
+  };
+
+  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+
+  const srcDir = path.join(targetDir, "src");
+  fs.mkdirSync(srcDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(srcDir, "cache.php"),
+    `<?php
+
+declare(strict_types=1);
+
+use Predis\\Client;
+
+$redisUrl = getenv('REDIS_URL') ?: 'redis://localhost:6379';
+$redis = new Client($redisUrl);
+`,
+  );
+}
+
+// --- Auth JWT (PHP) ---
+
+function applyAuthPhp(targetDir: string): void {
+  const composerPath = path.join(targetDir, "composer.json");
+  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+
+  composer.require = {
+    ...composer.require,
+    "firebase/php-jwt": "^6.0",
+  };
+
+  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+
+  const middlewareDir = path.join(targetDir, "src", "Middleware");
+  fs.mkdirSync(middlewareDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(middlewareDir, "AuthJwt.php"),
+    `<?php
+
+declare(strict_types=1);
+
+namespace App\\Middleware;
+
+use Firebase\\JWT\\JWT;
+use Firebase\\JWT\\Key;
+use Psr\\Http\\Message\\ResponseInterface as Response;
+use Psr\\Http\\Message\\ServerRequestInterface as Request;
+use Psr\\Http\\Server\\MiddlewareInterface;
+use Psr\\Http\\Server\\RequestHandlerInterface as RequestHandler;
+use Slim\\Psr7\\Response as SlimResponse;
+
+class AuthJwt implements MiddlewareInterface
+{
+    private string $secret;
+
+    public function __construct()
+    {
+        $this->secret = getenv('JWT_SECRET') ?: 'change-me-in-production';
+    }
+
+    public function process(Request $request, RequestHandler $handler): Response
+    {
+        $auth = $request->getHeaderLine('Authorization');
+        $token = str_replace('Bearer ', '', $auth);
+
+        if (empty($token) || $token === $auth) {
+            return $this->unauthorized('Unauthorized');
+        }
+
+        try {
+            JWT::decode($token, new Key($this->secret, 'HS256'));
+            return $handler->handle($request);
+        } catch (\\Throwable) {
+            return $this->unauthorized('Invalid token');
+        }
+    }
+
+    private function unauthorized(string $message): Response
+    {
+        $response = new SlimResponse();
+        $response->getBody()->write(json_encode(['error' => $message]));
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(401);
+    }
+}
+`,
+  );
+}
+
+// --- Auth OAuth (PHP) ---
+
+function applyAuthOAuthPhp(targetDir: string): void {
+  const composerPath = path.join(targetDir, "composer.json");
+  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+
+  composer.require = {
+    ...composer.require,
+    "guzzlehttp/guzzle": "^7.0",
+  };
+
+  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+
+  const middlewareDir = path.join(targetDir, "src", "Middleware");
+  fs.mkdirSync(middlewareDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(middlewareDir, "AuthOAuth.php"),
+    `<?php
+
+declare(strict_types=1);
+
+namespace App\\Middleware;
+
+use GuzzleHttp\\Client;
+use Psr\\Http\\Message\\ResponseInterface as Response;
+use Psr\\Http\\Message\\ServerRequestInterface as Request;
+use Psr\\Http\\Server\\MiddlewareInterface;
+use Psr\\Http\\Server\\RequestHandlerInterface as RequestHandler;
+use Slim\\Psr7\\Response as SlimResponse;
+
+class AuthOAuth implements MiddlewareInterface
+{
+    private string $issuerUrl;
+
+    public function __construct()
+    {
+        $this->issuerUrl = getenv('OIDC_ISSUER_URL') ?: 'https://your-provider.com';
+    }
+
+    public function process(Request $request, RequestHandler $handler): Response
+    {
+        $auth = $request->getHeaderLine('Authorization');
+        $token = str_replace('Bearer ', '', $auth);
+
+        if (empty($token) || $token === $auth) {
+            return $this->unauthorized('Unauthorized');
+        }
+
+        try {
+            $client = new Client();
+            $resp = $client->get($this->issuerUrl . '/userinfo', [
+                'headers' => ['Authorization' => "Bearer $token"],
+            ]);
+
+            if ($resp->getStatusCode() !== 200) {
+                return $this->unauthorized('Invalid token');
+            }
+
+            return $handler->handle($request);
+        } catch (\\Throwable) {
+            return $this->unauthorized('Invalid token');
+        }
+    }
+
+    private function unauthorized(string $message): Response
+    {
+        $response = new SlimResponse();
+        $response->getBody()->write(json_encode(['error' => $message]));
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(401);
+    }
+}
+`,
+  );
+}
+
+// --- Queue (PHP) ---
+
+function applyQueuePhp(targetDir: string): void {
+  const composerPath = path.join(targetDir, "composer.json");
+  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+
+  composer.require = {
+    ...composer.require,
+    "symfony/messenger": "^7.0",
+    "symfony/redis-messenger": "^7.0",
+  };
+
+  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+
+  const messageDir = path.join(targetDir, "src", "Message");
+  fs.mkdirSync(messageDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(messageDir, "ExampleMessage.php"),
+    `<?php
+
+declare(strict_types=1);
+
+namespace App\\Message;
+
+class ExampleMessage
+{
+    public function __construct(
+        public readonly string $content,
+    ) {}
+}
+`,
+  );
+
+  fs.writeFileSync(
+    path.join(messageDir, "ExampleHandler.php"),
+    `<?php
+
+declare(strict_types=1);
+
+namespace App\\Message;
+
+class ExampleHandler
+{
+    public function __invoke(ExampleMessage $message): void
+    {
+        echo "Processing: " . $message->content . "\\n";
+    }
+}
 `,
   );
 }

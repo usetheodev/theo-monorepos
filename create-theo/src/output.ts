@@ -104,6 +104,8 @@ function getDevInstructions(
       return ["./gradlew bootRun"];
     case "ruby":
       return ["bundle install", "bundle exec rackup"];
+    case "php":
+      return ["composer install", "composer start"];
     default:
       return null;
   }
@@ -141,6 +143,11 @@ function getDatabaseInstructions(template: TemplateInfo): string[] | null {
       return [
         dockerLine,
         "# Sequel auto-creates tables on first run",
+      ];
+    case "php":
+      return [
+        dockerLine,
+        "# Doctrine auto-connects on first request",
       ];
     default:
       return null;

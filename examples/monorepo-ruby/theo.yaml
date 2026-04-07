@@ -1,0 +1,15 @@
+version: 1
+project: "monorepo-ruby"
+
+apps:
+  api:
+    path: apps/api
+    framework: sinatra
+    type: server
+    port: 4567
+
+  worker:
+    path: apps/worker
+    framework: custom
+    type: worker
+    port: 4568

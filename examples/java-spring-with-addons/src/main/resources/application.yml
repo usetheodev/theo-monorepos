@@ -1,0 +1,29 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 10s
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+logging:
+  pattern:
+    console: '{"time":"%d{ISO8601}","level":"%p","logger":"%logger","message":"%m"}%n'
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mydb}
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}

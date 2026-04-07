@@ -1,0 +1,9 @@
+version: 1
+project: "node-nestjs-with-addons"
+
+apps:
+  api:
+    path: .
+    framework: nestjs
+    type: server
+    port: 3000

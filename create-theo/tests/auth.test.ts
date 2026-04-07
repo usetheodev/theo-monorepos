@@ -126,6 +126,17 @@ describe("scaffold with auth-jwt", () => {
     const gemfile = fs.readFileSync(path.join(targetDir, "Gemfile"), "utf-8");
     expect(gemfile).toContain("jwt");
   });
+
+  it("adds auth to php-slim", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "auth-php");
+
+    scaffold({ projectName: "auth-php", template, targetDir, addons: ["auth-jwt"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "src", "Middleware", "AuthJwt.php"))).toBe(true);
+    const composer = fs.readFileSync(path.join(targetDir, "composer.json"), "utf-8");
+    expect(composer).toContain("firebase/php-jwt");
+  });
 });
 
 describe("scaffold with auth-oauth", () => {
@@ -215,5 +226,16 @@ describe("scaffold with auth-oauth", () => {
     const gemfile = fs.readFileSync(path.join(targetDir, "Gemfile"), "utf-8");
     expect(gemfile).toContain("omniauth");
     expect(gemfile).toContain("omniauth_openid_connect");
+  });
+
+  it("adds OAuth to php-slim", () => {
+    const template = getTemplate("php-slim")!;
+    const targetDir = path.join(tempDir, "oauth-php");
+
+    scaffold({ projectName: "oauth-php", template, targetDir, addons: ["auth-oauth"], skipInstall: true, skipGit: true });
+
+    expect(fs.existsSync(path.join(targetDir, "src", "Middleware", "AuthOAuth.php"))).toBe(true);
+    const composer = fs.readFileSync(path.join(targetDir, "composer.json"), "utf-8");
+    expect(composer).toContain("guzzlehttp/guzzle");
   });
 });

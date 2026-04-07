@@ -1,6 +1,6 @@
 import type { TemplateType } from "./templates.js";
 
-export type Language = "node" | "go" | "python" | "rust" | "java" | "ruby";
+export type Language = "node" | "go" | "python" | "rust" | "java" | "ruby" | "php";
 
 export interface OrmConfig {
   id: string;
@@ -15,6 +15,7 @@ const ormByLanguage: Record<string, OrmConfig> = {
   rust: { id: "diesel", name: "Diesel", language: "rust" },
   java: { id: "spring-data-jpa", name: "Spring Data JPA", language: "java" },
   ruby: { id: "sequel", name: "Sequel", language: "ruby" },
+  php: { id: "doctrine", name: "Doctrine DBAL", language: "php" },
 };
 
 export function getOrmForLanguage(

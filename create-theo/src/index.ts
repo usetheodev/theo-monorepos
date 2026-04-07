@@ -146,6 +146,7 @@ function printHelp(): void {
       rust-axum           Rust Axum API server
       java-spring         Java Spring Boot API
       ruby-sinatra        Ruby Sinatra API
+      php-slim            PHP Slim Framework API
     ${chalk.cyan("Frontend:")}
       node-nextjs         Next.js app (App Router)
     ${chalk.cyan("Fullstack:")}
@@ -154,6 +155,10 @@ function printHelp(): void {
       monorepo-turbo      Turborepo (Express API + Next.js)
       monorepo-go         Go Workspaces (API + Worker)
       monorepo-python     Python uv workspace (API + Worker)
+      monorepo-rust       Cargo workspace (Axum API + Worker)
+      monorepo-java       Gradle multi-project (Spring + Worker)
+      monorepo-ruby       Bundler multi-app (Sinatra + Worker)
+      monorepo-php        Composer multi-app (Slim + Worker)
     ${chalk.cyan("Worker:")}
       node-worker         Background job processor
 
