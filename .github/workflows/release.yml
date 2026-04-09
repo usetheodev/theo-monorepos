@@ -44,9 +44,19 @@ jobs:
         working-directory: create-theo
         run: npm test
 
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "tag=${VERSION%%-*}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish
         working-directory: create-theo
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag ${{ steps.npm-tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -65,7 +75,8 @@ jobs:
 
       - name: Scaffold and verify node-express
         run: |
-          npx create-theo@latest smoke-express --template node-express
+          VERSION="${GITHUB_REF_NAME#v}"
+          npx create-theo@${VERSION} smoke-express --template node-express
           cd smoke-express
           test -f theo.yaml
           test -f package.json
