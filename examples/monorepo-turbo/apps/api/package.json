@@ -16,9 +16,9 @@
     "@monorepo-turbo/shared": "*"
   },
   "devDependencies": {
-    "eslint": "^9.0.0",
-    "@eslint/js": "^9.0.0",
-    "prettier": "^3.4.0",
+    "@monorepo-turbo/eslint-config": "*",
+    "eslint": "^9.39.0",
+    "prettier": "^3.8.0",
     "jest": "^29.7.0",
     "supertest": "^7.0.0"
   }

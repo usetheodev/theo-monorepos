@@ -215,6 +215,11 @@ async function main(): Promise<void> {
     } catch {
       warnings.push(`Could not install dependencies. Run "${pm} install" manually.`);
     }
+    // Remove lock files to be package-manager agnostic
+    for (const lf of ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb"]) {
+      const lockPath = path.join(targetDir, lf);
+      if (fs.existsSync(lockPath)) fs.unlinkSync(lockPath);
+    }
   }
 
   if (!isCI) {

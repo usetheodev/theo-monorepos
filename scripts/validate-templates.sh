@@ -41,8 +41,12 @@ for template_dir in "$TEMPLATES_DIR"/*/; do
 
   cd "$WORK_DIR"
 
-  # 1. Scaffold
-  if ! node "$CREATE_THEO_DIR/index.js" "$project_name" --template "$template_id" 2>/dev/null; then
+  # 1. Scaffold (CI=true skips interactive prompts for database/addons)
+  EXTRA_FLAGS=""
+  if [[ "$template_id" == "node-nextjs" || "$template_id" == "fullstack-nextjs" || "$template_id" == "monorepo-turbo" ]]; then
+    EXTRA_FLAGS="--styling none"
+  fi
+  if ! CI=true node "$CREATE_THEO_DIR/index.js" "$project_name" --template "$template_id" $EXTRA_FLAGS 2>/dev/null; then
     log_fail "$template_id" "scaffold failed"
     continue
   fi

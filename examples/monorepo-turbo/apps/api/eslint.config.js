@@ -1,11 +1,12 @@
-const js = require("@eslint/js");
+import { config } from "@monorepo-turbo/eslint-config/base";
 
-module.exports = [
-  js.configs.recommended,
+export default [
+  ...config,
   {
     rules: {
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "no-console": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },
 ];

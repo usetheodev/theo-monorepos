@@ -1,7 +1,7 @@
 import { LoggerService } from "@nestjs/common";
 import * as pino from "pino";
 
-const logger = (pino as any)({ level: process.env.LOG_LEVEL || "info" });
+const logger = (pino as unknown as typeof pino.default)({ level: process.env.LOG_LEVEL || "info" });
 
 export class PinoLogger implements LoggerService {
   log(message: string, context?: string) {

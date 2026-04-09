@@ -151,7 +151,7 @@ function copyDir(src: string, dest: string, projectName: string): void {
     const srcPath = path.join(src, entry.name);
 
     if (entry.isDirectory()) {
-      if (entry.name === "node_modules") continue;
+      if (entry.name === "node_modules" || entry.name === "package-lock.json") continue;
       const destPath = path.join(dest, entry.name);
       copyDir(srcPath, destPath, projectName);
     } else {
@@ -262,7 +262,7 @@ export function dryRunScaffold(options: ScaffoldOptions): string[] {
 function collectFiles(dir: string, prefix: string): string[] {
   const files: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules") continue;
+    if (entry.name === "node_modules" || entry.name === "package-lock.json") continue;
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       files.push(...collectFiles(path.join(dir, entry.name), rel));
