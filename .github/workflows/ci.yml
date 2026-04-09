@@ -30,6 +30,7 @@ jobs:
 
       - name: Clean install
         working-directory: create-theo
+        shell: bash
         run: |
           rm -rf node_modules package-lock.json
           npm install --no-fund --no-audit
