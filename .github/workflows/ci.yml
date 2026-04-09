@@ -32,6 +32,11 @@ jobs:
         working-directory: create-theo
         run: npm ci
 
+      - name: Fix native modules (rollup on macOS/Windows)
+        if: runner.os != 'Linux'
+        working-directory: create-theo
+        run: npm rebuild
+
       - name: Build
         working-directory: create-theo
         run: npm run build
