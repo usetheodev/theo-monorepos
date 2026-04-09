@@ -1,17 +1,8 @@
 version: 1
 project: "{{project-name}}"
 
-commands:
-  dev: "npm run dev"
-  build: "npm run build"
-  test: "npm test"
-  lint: "npm run lint"
-  format: "npm run format"
-  security: "npm audit"
-
 apps:
   worker:
     path: .
     framework: custom
     type: worker
-    port: 3000
