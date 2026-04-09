@@ -3,6 +3,31 @@
 ## [Unreleased]
 
 ### Added
+- ESLint config in node-nextjs and fullstack-nextjs upgraded to ESM (`eslint.config.mjs`) with `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript` for proper Next.js linting
+- `scripts/check-consistency.sh` to verify shared configs (.prettierrc, tsconfig, components.json, eslint) stay identical across frontend templates
+- Template consistency check step in CI workflow (runs before template validation)
+- `.github/dependabot.yml` for automated dependency updates (weekly npm, monthly GitHub Actions)
+- `engines.node >= 20.9` declaration in all frontend template package.json files (Next.js 16 requirement)
+- `lint`, `format`, `typecheck` scripts in monorepo-turbo root package.json (delegating to Turbo)
+- `lint`, `format` scripts in monorepo-turbo web app package.json
+- `packages/eslint-config` shared ESLint configuration in monorepo-turbo template (base config with typescript-eslint + prettier)
+- `packages/typescript-config` shared TypeScript configuration in monorepo-turbo template (base.json + nextjs.json)
+- Monorepo web app now references shared `@project/eslint-config` and `@project/typescript-config` packages
+
+### Changed
+- Tightened dependency version ranges: eslint ^9.0→^9.39, prettier ^3.4→^3.8, tailwindcss/postcss ^4.1→^4.2
+- Scaffolded Node.js projects no longer include lock files (package-manager agnostic)
+- Upgraded frontend deps: Next.js ^15.3→^16.1, React ^19.0→^19.2, TypeScript ^5.7→^5.9, prettier-plugin-tailwindcss ^0.6→^0.7, tailwindcss/postcss ^4.0→^4.1
+- Renamed `middleware.ts` to `proxy.ts` in node-nextjs and fullstack-nextjs templates (Next.js 16 migration)
+- Removed redundant `--turbopack` flag from `next dev` scripts (Turbopack is default in Next.js 16)
+- shadcn/ui `components.json` style changed from `default` to `radix-nova` in all frontend templates
+- Prettier config: added `endOfLine: "lf"` and `tailwindStylesheet` for improved Tailwind v4 class sorting
+- TypeScript config: enabled `noUnusedLocals`, `noUnusedParameters`, `noUncheckedIndexedAccess` for stricter type checking in all frontend templates
+- Monorepo web `tsconfig.json` now extends shared `@project/typescript-config/nextjs.json` (DRY config)
+- Monorepo ESLint configs now extend shared `@project/eslint-config/base` (DRY config)
+- Regenerated examples for `node-nextjs`, `fullstack-nextjs`, and `monorepo-turbo` to reflect all changes above
+
+### Added
 - TypeScript-first frontend templates: `node-nextjs`, `fullstack-nextjs`, and `monorepo-turbo` web app now use `.tsx`/`.ts` throughout with full type safety
 - `tsconfig.json` with path aliases (`@/*`) in all frontend templates
 - ThemeProvider with dark mode support (next-themes) and `suppressHydrationWarning` in all frontend templates

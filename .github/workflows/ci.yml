@@ -66,6 +66,9 @@ jobs:
         working-directory: create-theo
         run: npm ci
 
+      - name: Check template consistency
+        run: bash scripts/check-consistency.sh
+
       - name: Validate all templates
         run: CI=true bash scripts/validate-templates.sh
 

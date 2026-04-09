@@ -6,4 +6,3 @@ apps:
     path: .
     framework: nextjs
     type: frontend
-    render: server

@@ -8,7 +8,7 @@
 
 <p align="center">
   Production-ready project scaffolding for Node.js, Go, Python, Rust, Java, Ruby, and PHP.<br/>
-  TypeScript-first. Tailwind v4. Dark mode. Deploy anywhere.
+  TypeScript-first. Next.js 16. Tailwind v4. Dark mode. Deploy anywhere.
 </p>
 
 <p align="center">
@@ -68,8 +68,8 @@ bun create theo
 
 | Template | Stack | Type | Default Port |
 |----------|-------|------|:------------:|
-| `node-nextjs` | Next.js 15 (App Router, TypeScript) | Frontend / SSR | 3000 |
-| `fullstack-nextjs` | Next.js 15 + API Routes (TypeScript) | Fullstack | 3000 |
+| `node-nextjs` | Next.js 16 (App Router, TypeScript) | Frontend / SSR | 3000 |
+| `fullstack-nextjs` | Next.js 16 + API Routes (TypeScript) | Fullstack | 3000 |
 
 ### Monorepo
 
@@ -144,15 +144,17 @@ Frontend templates (`node-nextjs`, `fullstack-nextjs`, `monorepo-turbo`) are Typ
 
 | Feature | Implementation |
 |---------|---------------|
-| **TypeScript** | `.tsx`/`.ts` throughout, strict mode, `@/*` path aliases |
-| **React 19** | Latest stable with Server Components support |
-| **Next.js 15** | App Router, Turbopack dev server, standalone output |
+| **TypeScript** | `.tsx`/`.ts` throughout, strict mode (`noUnusedLocals`, `noUnusedParameters`, `noUncheckedIndexedAccess`), `@/*` path aliases |
+| **React 19.2** | Latest stable with Server Components support |
+| **Next.js 16** | App Router, Turbopack (default), proxy.ts, standalone output |
 | **Tailwind CSS v4** | `@import "tailwindcss"` — zero config, no `tailwind.config.js` |
+| **ESLint** | ESM flat config (`eslint.config.mjs`) with `eslint-config-next/core-web-vitals` + `typescript` rules |
 | **Dark mode** | ThemeProvider with `next-themes`, system preference detection |
-| **shadcn/ui ready** | `components.json` configured — run `npx shadcn add button` |
+| **shadcn/ui ready** | `components.json` (radix-nova style) — run `npx shadcn add button` |
 | **`cn()` utility** | `lib/utils.ts` with `clsx` + `tailwind-merge` |
-| **Prettier** | `prettier-plugin-tailwindcss` for automatic class sorting |
+| **Prettier** | `prettier-plugin-tailwindcss` with `tailwindStylesheet` + `tailwindFunctions` for class sorting in `cn()`/`cva()` |
 | **Type checking** | `npm run typecheck` via `tsc --noEmit` |
+| **Node.js** | `engines.node >= 20.9` declared (Next.js 16 requirement) |
 
 ### Project structure (node-nextjs)
 
@@ -167,19 +169,35 @@ my-app/
 │   │   └── api/
 │   │       ├── health/route.ts # Liveness probe
 │   │       └── ready/route.ts  # Readiness probe
-│   ├── middleware.ts           # Request logging
+│   ├── proxy.ts                # Request logging (Next.js 16 proxy)
 │   └── instrumentation.ts     # Logger + graceful shutdown
 ├── components/
 │   └── theme-provider.tsx      # Dark mode provider
 ├── lib/
 │   └── utils.ts                # cn() utility
 ├── hooks/                      # Custom hooks (empty, ready to use)
-├── components.json             # shadcn/ui CLI config
-├── tsconfig.json               # TypeScript with @/* aliases
+├── components.json             # shadcn/ui CLI config (radix-nova)
+├── eslint.config.mjs           # ESLint flat config (Next.js + TypeScript rules)
+├── tsconfig.json               # TypeScript strict with @/* aliases
 ├── next.config.mjs             # ESM config, standalone output
-├── .prettierrc                 # Tailwind class sorting
+├── .prettierrc                 # Tailwind class sorting + tailwindStylesheet
 ├── Dockerfile                  # Production-optimized
 └── theo.yaml                   # Deploy config
+```
+
+### Monorepo structure (monorepo-turbo)
+
+```
+my-mono/
+├── apps/
+│   ├── api/                    # Express API (JavaScript)
+│   └── web/                    # Next.js 16 frontend (TypeScript)
+├── packages/
+│   ├── shared/                 # Shared utilities (TypeScript)
+│   ├── eslint-config/          # Centralized ESLint config
+│   └── typescript-config/      # Centralized TypeScript config (base + nextjs)
+├── turbo.json                  # Build orchestration + caching
+└── package.json                # npm workspaces root
 ```
 
 ## Styling
@@ -329,7 +347,8 @@ npm create theo@latest my-app -t node-express -d --add redis,auth-jwt --dry-run
 
 - **Production-ready from day one.** CORS, structured logging, error handling, graceful shutdown, Dockerfile, tests, linting — the things every project needs but nobody wants to configure.
 - **One CLI, 7 languages.** Node.js, Go, Python, Rust, Java, Ruby, PHP — same experience. Pick your language and get a real project, not a toy.
-- **TypeScript-first frontend.** React 19, Next.js 15, Tailwind v4, dark mode, shadcn/ui ready. Not a 2022 starter kit.
+- **TypeScript-first frontend.** React 19.2, Next.js 16, Tailwind v4, ESLint with Next.js rules, dark mode, shadcn/ui ready. Not a 2022 starter kit.
+- **Package-manager agnostic.** Lock files are removed after scaffold — use npm, pnpm, yarn, or bun freely.
 - **Composable modules.** Add Redis, JWT auth, or job queues with a flag. Get working code with docker-compose, not boilerplate stubs.
 - **Database-ready.** Pass `--database` and get a connected ORM, docker-compose with Postgres, and migration scripts.
 - **Kubernetes-native.** Every template ships with `/health` and `/ready` probes, Dockerfile, and graceful shutdown.
@@ -338,7 +357,7 @@ npm create theo@latest my-app -t node-express -d --add redis,auth-jwt --dry-run
 
 ## Prerequisites
 
-- **Node.js 18+** (required to run `create-theo`)
+- **Node.js 20.9+** (required to run `create-theo` and Next.js 16 templates)
 - **Docker** (optional, for local database/Redis via docker-compose)
 - **[Theo CLI](https://usetheo.dev)** (optional, for one-command deploy to Kubernetes)
 
@@ -374,13 +393,16 @@ npm test
 # Stub mode (fast rebuild during development)
 npm run dev
 
-# Full smoke test (requires all runtimes)
+# Check that shared configs haven't drifted between frontend templates
+bash scripts/check-consistency.sh
+
+# Full smoke test (scaffolds all 19 templates, verifies structure)
 bash scripts/validate-templates.sh
 ```
 
 ## Examples
 
-The `examples/` directory contains 29 scaffolded projects generated by the CLI — 19 clean templates + 10 with addons (database, Redis, auth, queue). Browse them to see exactly what `create-theo` generates.
+The `examples/` directory contains scaffolded projects generated by the CLI — base templates + variants with addons (database, Redis, auth, queue). Browse them to see exactly what `create-theo` generates.
 
 ## License
 

@@ -12,4 +12,3 @@ apps:
     path: apps/web
     framework: nextjs
     type: frontend
-    render: server

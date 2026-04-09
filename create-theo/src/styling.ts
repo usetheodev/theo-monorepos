@@ -20,8 +20,8 @@ export const stylingOptions: StylingOption[] = [
     description: "Utility-first CSS framework",
     dependencies: {},
     devDependencies: {
-      tailwindcss: "^4.0.0",
-      "@tailwindcss/postcss": "^4.0.0",
+      tailwindcss: "^4.2.0",
+      "@tailwindcss/postcss": "^4.2.0",
     },
   },
   {
@@ -35,8 +35,8 @@ export const stylingOptions: StylingOption[] = [
       "@radix-ui/react-slot": "^1.1.0",
     },
     devDependencies: {
-      tailwindcss: "^4.0.0",
-      "@tailwindcss/postcss": "^4.0.0",
+      tailwindcss: "^4.2.0",
+      "@tailwindcss/postcss": "^4.2.0",
       "tw-animate-css": "^1.0.0",
     },
   },
@@ -46,8 +46,8 @@ export const stylingOptions: StylingOption[] = [
     description: "Component library built on Tailwind CSS",
     dependencies: {},
     devDependencies: {
-      tailwindcss: "^4.0.0",
-      "@tailwindcss/postcss": "^4.0.0",
+      tailwindcss: "^4.2.0",
+      "@tailwindcss/postcss": "^4.2.0",
       daisyui: "^4.12.0",
     },
   },
