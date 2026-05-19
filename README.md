@@ -4,11 +4,16 @@
   </a>
 </p>
 
-<h1 align="center">create-theo</h1>
+<p align="center"><code>create-theo</code> · the <strong>Build</strong> (scaffold) layer of the <a href="https://usetheo.dev">Theo ecosystem</a></p>
+
+<h1 align="center">One command. Seven languages. A real backend in 60 seconds.</h1>
 
 <p align="center">
-  Production-ready project scaffolding for Node.js, Go, Python, Rust, Java, Ruby, and PHP.<br/>
-  TypeScript-first. Next.js 16. Tailwind v4. Dark mode. Deploy anywhere.
+  <strong><code>npm create theo@latest</code> — production-ready scaffolding for AI agents and the apps around them.</strong>
+</p>
+
+<p align="center">
+  <em>The scaffold verb of <strong>Chat. Build. Deploy.</strong> — chat with TheoCode, scaffold here, ship on Theo PaaS. Multi-language, multi-runtime, no vendor lock-in.</em>
 </p>
 
 <p align="center">
@@ -22,6 +27,49 @@
 </p>
 
 ---
+
+## Pick the language. We'll ship the boilerplate.
+
+There is a version of starting a new project that doesn't involve a checklist.
+
+No copy-pasting CORS middleware. No reinventing graceful shutdown. No wiring up health probes for the third time this quarter. No remembering whether it's `tsc --noEmit` or `npm run typecheck`. No "wait, what was the npm script for migrations again?"
+
+You pick a language. You pick a stack. You get a project — with the things every real backend needs already wired in. Then you build the only part that matters: your product.
+
+## What you'd ship
+
+- **A real backend, in any language.** Pick Go, Python, Rust, or Java for the team's strengths. Pick Node for shared types with the frontend. TheoCreate doesn't force TypeScript to get nice scaffolding.
+- **A multi-tenant SaaS in a weekend.** `monorepo-turbo` (Express + Next.js) or `monorepo-go` (Go workspaces). Auth, queue, Postgres — three flags. Deploy to Theo PaaS in 4 minutes.
+- **An API for your AI agent.** `node-fastify` + `--add auth-jwt,queue` and you have a job-queue-backed API the agent can hit. Pair with TheoKit for the frontend surface.
+- **A migration off a 2022 starter.** Modern toolchain — Next.js 16, Tailwind v4, ESLint flat config, strict TypeScript. Replace one file at a time.
+- **Internal microservices.** `go-api` for performance, `python-fastapi` for ML, `rust-axum` for safety — all with the same operational shape (logging, health, shutdown, CI).
+- **Worker / job-runner.** `node-worker`, optionally with BullMQ or Asynq for jobs. Same Dockerfile, same health probes, same deploy story as the API.
+
+## Why TheoCreate
+
+The `create-X` ecosystem has one shape per framework. **`create-next-app` ships Next.js. `create-vite` ships Vite. `create-t3-app` ships Next.js + tRPC.** Pick a different language and you're back to copy-paste boilerplate or a half-maintained generator.
+
+TheoCreate is **one CLI across the languages your team actually uses**.
+
+| Capability | TheoCreate | `create-next-app` | `create-vite` | `create-t3-app` | Roll your own |
+|---|---|---|---|---|---|
+| Languages covered | **Node · Go · Python · Rust · Java · Ruby · PHP** | Node | Node | Node | (you) |
+| Frameworks per language | **Multiple** (Express, Fastify, NestJS, FastAPI, Axum, Spring, Sinatra, Slim, …) | Next.js only | Frontend-only | Next.js only | (you) |
+| Composable modules (Redis, auth, queue) | **Flag-driven** | DIY | DIY | Pre-bundled | DIY |
+| Database + ORM + `docker-compose` wired | **`--database` flag** | DIY | DIY | Yes (Prisma) | DIY |
+| Monorepo templates | **7** (Turbo · Go · Python · Rust · Java · Ruby · PHP) | DIY | DIY | Limited | DIY |
+| Health probes + graceful shutdown by default | **Yes** | DIY | DIY | DIY | DIY |
+| Package-manager auto-detect | **npm · pnpm · yarn · bun** | Limited | Limited | Limited | DIY |
+| `--dry-run` preview | **Yes** | No | No | No | N/A |
+| License | Apache-2.0 | MIT | MIT | MIT | N/A |
+
+`create-next-app` ships Next.js. **TheoCreate ships the project you'd actually build.**
+
+---
+
+## How it works
+
+Below this line, full technical vocabulary is in play. Quick Start, the 19 templates, CLI flags, styling options, modules, database, package-manager auto-detection, preview mode.
 
 ## Quick Start
 
@@ -343,18 +391,6 @@ npm create theo@latest my-app -t node-express -d --add redis,auth-jwt --dry-run
   Total: 17 files
 ```
 
-## Why create-theo?
-
-- **Production-ready from day one.** CORS, structured logging, error handling, graceful shutdown, Dockerfile, tests, linting — the things every project needs but nobody wants to configure.
-- **One CLI, 7 languages.** Node.js, Go, Python, Rust, Java, Ruby, PHP — same experience. Pick your language and get a real project, not a toy.
-- **TypeScript-first frontend.** React 19.2, Next.js 16, Tailwind v4, ESLint with Next.js rules, dark mode, shadcn/ui ready. Not a 2022 starter kit.
-- **Package-manager agnostic.** Lock files are removed after scaffold — use npm, pnpm, yarn, or bun freely.
-- **Composable modules.** Add Redis, JWT auth, or job queues with a flag. Get working code with docker-compose, not boilerplate stubs.
-- **Database-ready.** Pass `--database` and get a connected ORM, docker-compose with Postgres, and migration scripts.
-- **Kubernetes-native.** Every template ships with `/health` and `/ready` probes, Dockerfile, and graceful shutdown.
-- **Deploy anywhere.** Every template works with [Theo](https://usetheo.dev), Docker, Railway, Fly.io, or any container platform. No vendor lock-in.
-- **Smart CLI.** Auto-detects your package manager, supports `--dry-run` preview, `--verbose` debugging, external GitHub templates, and directory overwrite confirmation.
-
 ## Prerequisites
 
 - **Node.js 20.9+** (required to run `create-theo` and Next.js 16 templates)
@@ -404,6 +440,21 @@ bash scripts/validate-templates.sh
 
 The `examples/` directory contains scaffolded projects generated by the CLI — base templates + variants with addons (database, Redis, auth, queue). Browse them to see exactly what `create-theo` generates.
 
+## Status
+
+Honest claims only.
+
+- **Production.** 19 templates, 8 styling options, 4 add-on modules, 7 ORMs, package-manager auto-detection, dry-run preview, external GitHub templates — all shipped on npm. Apache-2.0. Validation suite (`scripts/validate-templates.sh`) covers every template.
+- **205 tests across 12 suites** — scaffolding, hooks, error paths, module combinations.
+- **`CLAUDE.md` per scaffolded project.** TheoCreate writes a tailored `CLAUDE.md` (AI assistant instructions) into every scaffolded project — keyed by language, framework, and selected addons.
+- **Theo PaaS deploy** — templates ship with `theo.yaml`; `theo deploy` is the canonical PaaS path. Theo PaaS itself is pre-release.
+
 ## License
 
-[MIT](./LICENSE)
+[Apache-2.0](./LICENSE)
+
+## Community
+
+- Discord: https://discord.usetheo.dev/
+- X: https://x.com/usetheodev
+- LinkedIn: https://linkedin.com/company/usetheodev
