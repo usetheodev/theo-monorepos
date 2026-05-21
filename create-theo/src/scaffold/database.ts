@@ -1,61 +1,47 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
-import { readPackageJson } from "./types.js";
+import type { FileDraft } from "./file-draft.js";
 
-export function applyDatabase(targetDir: string, template: TemplateInfo): void {
+export function generateDatabaseDrafts(template: TemplateInfo): FileDraft[] {
   switch (template.language) {
     case "node":
-      applyPrisma(targetDir, template);
-      break;
+      return generatePrismaDrafts(template);
     case "go":
-      applyGorm(targetDir);
-      break;
+      return generateGormDrafts();
     case "python":
-      applySqlalchemy(targetDir);
-      break;
+      return generateSqlalchemyDrafts();
     case "rust":
-      applyDiesel(targetDir);
-      break;
+      return generateDieselDrafts();
     case "java":
-      applySpringDataJpa(targetDir);
-      break;
+      return generateSpringDataJpaDrafts();
     case "ruby":
-      applySequel(targetDir);
-      break;
+      return generateSequelDrafts();
     case "php":
-      applyDoctrine(targetDir);
-      break;
+      return generateDoctrineDrafts();
+    default:
+      return [];
   }
 }
 
-function applyPrisma(targetDir: string, template: TemplateInfo): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
+function generatePrismaDrafts(template: TemplateInfo): FileDraft[] {
+  const isTypeScript = template.id === "node-nestjs";
 
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    "@prisma/client": "^6.0.0",
-  };
-  pkg.devDependencies = {
-    ...(pkg.devDependencies as Record<string, string>),
-    prisma: "^6.0.0",
-  };
-  pkg.scripts = {
-    ...(pkg.scripts as Record<string, string>),
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-  };
-
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const prismaDir = path.join(targetDir, "prisma");
-  fs.mkdirSync(prismaDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(prismaDir, "schema.prisma"),
-    `generator client {
+  const drafts: FileDraft[] = [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { "@prisma/client": "^6.0.0" },
+      devDeps: { prisma: "^6.0.0" },
+      scripts: {
+        "db:generate": "prisma generate",
+        "db:migrate": "prisma migrate dev",
+        "db:studio": "prisma studio",
+      },
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "prisma/schema.prisma",
+      content: `generator client {
   provider = "prisma-client-js"
 }
 
@@ -72,52 +58,51 @@ model User {
   updatedAt DateTime @updatedAt
 }
 `,
-  );
-
-  const isTypeScript = template.id === "node-nestjs";
-  const libDir = path.join(targetDir, "src", "lib");
-  fs.mkdirSync(libDir, { recursive: true });
+    },
+  ];
 
   if (isTypeScript) {
-    fs.writeFileSync(
-      path.join(libDir, "db.ts"),
-      `import { PrismaClient } from "@prisma/client";
+    drafts.push({
+      kind: "text",
+      path: "src/lib/db.ts",
+      content: `import { PrismaClient } from "@prisma/client";
 
 export const prisma = new PrismaClient();
 `,
-    );
+    });
   } else {
-    fs.writeFileSync(
-      path.join(libDir, "db.js"),
-      `const { PrismaClient } = require("@prisma/client");
+    drafts.push({
+      kind: "text",
+      path: "src/lib/db.js",
+      content: `const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
 module.exports = { prisma };
 `,
-    );
+    });
   }
+
+  return drafts;
 }
 
-function applyGorm(targetDir: string): void {
-  const goModPath = path.join(targetDir, "go.mod");
-  let goMod = fs.readFileSync(goModPath, "utf-8");
-
-  goMod += `
+function generateGormDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "go.mod",
+      appendText: `
 require (
 \tgorm.io/gorm v1.25.12
 \tgorm.io/driver/postgres v1.5.11
 )
-`;
-
-  fs.writeFileSync(goModPath, goMod);
-
-  const dbDir = path.join(targetDir, "internal", "database");
-  fs.mkdirSync(dbDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(dbDir, "database.go"),
-    `package database
+`,
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "internal/database/database.go",
+      content: `package database
 
 import (
 \t"fmt"
@@ -144,14 +129,11 @@ func Connect() error {
 \treturn nil
 }
 `,
-  );
-
-  const modelsDir = path.join(targetDir, "internal", "models");
-  fs.mkdirSync(modelsDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(modelsDir, "user.go"),
-    `package models
+    },
+    {
+      kind: "text",
+      path: "internal/models/user.go",
+      content: `package models
 
 import "time"
 
@@ -163,20 +145,22 @@ type User struct {
 \tUpdatedAt time.Time \`json:"updated_at"\`
 }
 `,
-  );
+    },
+  ];
 }
 
-function applySqlalchemy(targetDir: string): void {
-  const reqPath = path.join(targetDir, "requirements.txt");
-  let reqs = fs.readFileSync(reqPath, "utf-8");
-
-  reqs += `sqlalchemy>=2.0.0\npsycopg2-binary>=2.9.0\nalembic>=1.13.0\n`;
-
-  fs.writeFileSync(reqPath, reqs);
-
-  fs.writeFileSync(
-    path.join(targetDir, "database.py"),
-    `import os
+function generateSqlalchemyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "requirements.txt",
+      appendText: `sqlalchemy>=2.0.0\npsycopg2-binary>=2.9.0\nalembic>=1.13.0\n`,
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "database.py",
+      content: `import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -200,11 +184,11 @@ def get_db():
     finally:
         db.close()
 `,
-  );
-
-  fs.writeFileSync(
-    path.join(targetDir, "models.py"),
-    `from sqlalchemy import Column, DateTime, Integer, String, func
+    },
+    {
+      kind: "text",
+      path: "models.py",
+      content: `from sqlalchemy import Column, DateTime, Integer, String, func
 
 from database import Base
 
@@ -218,19 +202,22 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 `,
-  );
+    },
+  ];
 }
 
-function applyDiesel(targetDir: string): void {
-  const cargoPath = path.join(targetDir, "Cargo.toml");
-  let cargo = fs.readFileSync(cargoPath, "utf-8");
-  cargo += `\n[dependencies.diesel]\nversion = "2"\nfeatures = ["postgres"]\n\n[dependencies.dotenvy]\nversion = "0.15"\n`;
-  fs.writeFileSync(cargoPath, cargo);
-
-  const srcDir = path.join(targetDir, "src");
-  fs.writeFileSync(
-    path.join(srcDir, "db.rs"),
-    `use diesel::prelude::*;
+function generateDieselDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Cargo.toml",
+      appendText: `\n[dependencies.diesel]\nversion = "2"\nfeatures = ["postgres"]\n\n[dependencies.dotenvy]\nversion = "0.15"\n`,
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "src/db.rs",
+      content: `use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
 
@@ -241,23 +228,30 @@ pub fn establish_connection() -> PgConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 `,
-  );
+    },
+  ];
 }
 
-function applySpringDataJpa(targetDir: string): void {
-  const buildFile = path.join(targetDir, "build.gradle.kts");
-  let gradle = fs.readFileSync(buildFile, "utf-8");
-  gradle = gradle.replace(
-    'implementation("org.springframework.boot:spring-boot-starter-web")',
-    `implementation("org.springframework.boot:spring-boot-starter-web")
+function generateSpringDataJpaDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "build.gradle.kts",
+      replacePatterns: [
+        {
+          search:
+            'implementation("org.springframework.boot:spring-boot-starter-web")',
+          replace: `implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")`,
-  );
-  fs.writeFileSync(buildFile, gradle);
-
-  const appYml = path.join(targetDir, "src", "main", "resources", "application.yml");
-  let yml = fs.readFileSync(appYml, "utf-8");
-  yml += `
+        },
+      ],
+      source: "database",
+    },
+    {
+      kind: "dependency",
+      target: "src/main/resources/application.yml",
+      appendText: `
   datasource:
     url: \${DATABASE_URL:jdbc:postgresql://localhost:5432/mydb}
     username: postgres
@@ -266,15 +260,13 @@ function applySpringDataJpa(targetDir: string): void {
     hibernate:
       ddl-auto: update
     show-sql: false
-`;
-  fs.writeFileSync(appYml, yml);
-
-  const entityDir = path.join(targetDir, "src", "main", "java", "com", "theo", "app", "entity");
-  fs.mkdirSync(entityDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(entityDir, "User.java"),
-    `package com.theo.app.entity;
+`,
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "src/main/java/com/theo/app/entity/User.java",
+      content: `package com.theo.app.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -304,14 +296,11 @@ public class User {
     public void setName(String name) { this.name = name; }
 }
 `,
-  );
-
-  const repoDir = path.join(targetDir, "src", "main", "java", "com", "theo", "app", "repository");
-  fs.mkdirSync(repoDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(repoDir, "UserRepository.java"),
-    `package com.theo.app.repository;
+    },
+    {
+      kind: "text",
+      path: "src/main/java/com/theo/app/repository/UserRepository.java",
+      content: `package com.theo.app.repository;
 
 import com.theo.app.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -319,18 +308,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface UserRepository extends JpaRepository<User, Long> {
 }
 `,
-  );
+    },
+  ];
 }
 
-function applySequel(targetDir: string): void {
-  const gemfile = path.join(targetDir, "Gemfile");
-  let gems = fs.readFileSync(gemfile, "utf-8");
-  gems += `\ngem "sequel", "~> 5.0"\ngem "pg", "~> 1.5"\n`;
-  fs.writeFileSync(gemfile, gems);
-
-  fs.writeFileSync(
-    path.join(targetDir, "database.rb"),
-    `require "sequel"
+function generateSequelDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Gemfile",
+      appendText: `\ngem "sequel", "~> 5.0"\ngem "pg", "~> 1.5"\n`,
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "database.rb",
+      content: `require "sequel"
 
 DATABASE_URL = ENV.fetch("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/mydb")
 DB = Sequel.connect(DATABASE_URL)
@@ -346,27 +339,25 @@ end
 class User < Sequel::Model(:users)
 end
 `,
-  );
+    },
+  ];
 }
 
-function applyDoctrine(targetDir: string): void {
-  const composerPath = path.join(targetDir, "composer.json");
-  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
-
-  composer.require = {
-    ...composer.require,
-    "doctrine/dbal": "^4.0",
-    "doctrine/orm": "^3.0",
-  };
-
-  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
-
-  const srcDir = path.join(targetDir, "src");
-  fs.mkdirSync(srcDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(srcDir, "database.php"),
-    `<?php
+function generateDoctrineDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "composer.json",
+      deps: {
+        "doctrine/dbal": "^4.0",
+        "doctrine/orm": "^3.0",
+      },
+      source: "database",
+    },
+    {
+      kind: "text",
+      path: "src/database.php",
+      content: `<?php
 
 declare(strict_types=1);
 
@@ -376,5 +367,6 @@ $databaseUrl = getenv('DATABASE_URL') ?: 'pdo-pgsql://postgres:postgres@localhos
 
 $connection = DriverManager::getConnection(['url' => $databaseUrl]);
 `,
-  );
+    },
+  ];
 }

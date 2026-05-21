@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added (Pitch + Voice and Tone formalization, 2026-05-15)
+- **`PITCH.md`** at project root — landing-page copy for TheoCreate using the TheoKit aspirational voice. Three layers: HERO (no jargon — *"One command. Seven languages. A real backend in 60 seconds."*), BODY (benefit-first with one technical anchor per item, including comparison table against `create-next-app` / `create-vite` / `create-t3-app` / roll-your-own), DEEP DIVE (full technical vocabulary after the `## How it works` delimiter). Every named feature, count, and ORM verified against `README.md`, `templates/`, and `create-theo/src`.
+- **`CLAUDE.md`** at project root — contract between Claude and this project. Defines what TheoCreate is, locked names (npm package, marketing name, canonical install command `npm create theo@latest`, supported package managers, backend languages, frontend stack, template directory layout, validation script), the Voice and Tone section that formalizes adoption of the TheoKit aspirational voice for public copy (strategic review dated 2026-05-15), the relationship to other usetheo pillars, and the inviolable rules carried from root and global.
+
+### Changed (Cross-project, 2026-05-15)
+- Root monorepo `CLAUDE.md` (`../CLAUDE.md`) `## Voice and Tone — sub-project scoped`: TheoCreate moved from the "technical-direct only" list to the aspirational-voice list, alongside TheoKit, TheoKit-SDK, and TheoUI. Rationale captured inline (TheoCreate is the funnel's primary entry point — `npm create theo@latest` — and acquisition copy beats reference copy at the top of funnel).
+- Root monorepo sub-project index: `theo-stacks` "Read first" pointer updated from `theo-stacks/README.md` to `theo-stacks/CLAUDE.md` (newly created).
+
+### Changed (README alignment with PITCH, 2026-05-15)
+- `README.md` HERO + BODY layers rewritten in the TheoKit aspirational voice to match `PITCH.md`. New h1: *"One command. Seven languages. A real backend in 60 seconds."* `create-theo` demoted from h1 to a small tag above it (discoverability preserved without dominating the HERO). Removed the "TypeScript-first. Next.js 16. Tailwind v4. Dark mode. Deploy anywhere." subtagline (technical-direct framing) and the "Production-ready" claim that previously appeared in the HERO without a Status section to back it.
+- Added `## Pick the language. We'll ship the boilerplate.` storytelling block between the HERO and `## Quick Start`.
+- Added `## What you'd ship` (6 concrete projects) after the storytelling block.
+- Added `## Why TheoCreate` (comparison table vs `create-next-app`, `create-vite`, `create-t3-app`, roll-your-own) — replaces the prior `## Why create-theo?` section, which has been removed. New section closes with the punch line *"`create-next-app` ships Next.js. TheoCreate ships the project you'd actually build."*
+- Added `## How it works` DEEP DIVE delimiter before `## Quick Start`; everything from there downward stays technical-direct (Quick Start, Templates, CLI Options, Frontend Templates, Styling, Add-on Modules, Database, What's Included, Package Manager Detection, Preview Mode, Prerequisites, Contributing, Development).
+- Added `## Status` section between `## Contributing` and `## License`: honest production claims (19 templates · 8 styling options · 4 add-on modules · 7 ORMs · validation suite), 205-tests-12-suites verification, the per-project `CLAUDE.md` generation feature, and the TheoCloud pre-release caveat.
+
 ### Added
 - `CLAUDE.md` with AI assistant instructions generated in every scaffolded project — tailored per language, framework, and selected addons (inspired by Encore's LLM instructions)
 - Post-scaffold hooks: optional `hooks.postscaffold` command in `theo.yaml` executed after scaffolding completes (non-fatal)
@@ -10,6 +26,7 @@
 - `tests/hooks.test.ts` with 6 tests for hook parsing and execution
 
 ### Changed
+- License standardized to **Apache-2.0** (was MIT). Aligns all usetheo open-core pillars under a single license — see root `CLAUDE.md` strategic review of 2026-05-14.
 - Refactored `scaffold.ts` (3149 lines) into 9 focused modules under `src/scaffold/`: types, core, styling, ci, database, infrastructure, redis, auth, queue
 
 ### Added

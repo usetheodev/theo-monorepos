@@ -2,93 +2,103 @@ import fs from "node:fs";
 import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
 import type { StylingOption } from "../styling.js";
-import { readPackageJson } from "./types.js";
+import type { FileDraft } from "./file-draft.js";
+// fs is used ONLY for reading template files from templatesRoot (not writing)
 
 // --- Styling Layer ---
 
-export function applyStyling(
-  targetDir: string,
+export function generateStylingDrafts(
   template: TemplateInfo,
   styling: StylingOption,
-): void {
-  const pkgDirs = getPackageJsonDirs(targetDir, template);
+  templatesRoot: string,
+): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  for (const pkgDir of pkgDirs) {
-    addDependencies(pkgDir, styling);
+  const prefix = getPrefix(template, templatesRoot);
+
+  // DependencyDraft for package.json
+  const depDraft = buildDependencyDraft(styling, prefix);
+  if (depDraft) {
+    drafts.push(depDraft);
   }
 
-  const appDirs = getAppDirs(targetDir, template);
-
-  for (const appDir of appDirs) {
-    writeStylingConfig(appDir, styling);
-    writeGlobalsCss(appDir, styling);
-    updateLayout(appDir, styling);
-    updatePage(appDir, template, styling);
+  // TextFileDraft for postcss.config.mjs
+  const postcss = buildPostcssDraft(styling, prefix);
+  if (postcss) {
+    drafts.push(postcss);
   }
+
+  // TextFileDraft for globals.css
+  const css = buildGlobalsCssDraft(styling, prefix);
+  if (css) {
+    drafts.push(css);
+  }
+
+  // TextFileDraft for layout.tsx
+  const layoutDrafts = buildLayoutDrafts(styling, prefix, templatesRoot);
+  drafts.push(...layoutDrafts);
+
+  // TextFileDraft for page.tsx
+  const pageDraft = buildPageDraft(template, styling, prefix);
+  if (pageDraft) {
+    drafts.push(pageDraft);
+  }
+
+  return drafts;
 }
 
-function getPackageJsonDirs(
-  targetDir: string,
+function getPrefix(
   template: TemplateInfo,
-): string[] {
+  templatesRoot: string,
+): string {
   if (template.id === "monorepo-turbo") {
-    const webDir = path.join(targetDir, "apps", "web");
-    if (fs.existsSync(path.join(webDir, "package.json"))) {
-      return [webDir];
-    }
-    return [];
-  }
-  return [targetDir];
-}
-
-function getAppDirs(targetDir: string, template: TemplateInfo): string[] {
-  if (template.id === "monorepo-turbo") {
-    const webDir = path.join(targetDir, "apps", "web");
+    const webDir = path.join(templatesRoot, "apps", "web");
     if (fs.existsSync(webDir)) {
-      return [webDir];
+      return "apps/web";
     }
-    return [];
+    return "";
   }
-  return [targetDir];
+  return "";
 }
 
-function addDependencies(pkgDir: string, styling: StylingOption): void {
-  const pkgPath = path.join(pkgDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-
-  if (Object.keys(styling.dependencies).length > 0) {
-    pkg.dependencies = {
-      ...(pkg.dependencies as Record<string, string>),
-      ...styling.dependencies,
-    };
+function prefixPath(prefix: string, relativePath: string): string {
+  if (prefix) {
+    return `${prefix}/${relativePath}`;
   }
-
-  if (Object.keys(styling.devDependencies).length > 0) {
-    pkg.devDependencies = {
-      ...(pkg.devDependencies as Record<string, string>),
-      ...styling.devDependencies,
-    };
-  }
-
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+  return relativePath;
 }
 
-function writeStylingConfig(appDir: string, styling: StylingOption): void {
+function buildDependencyDraft(
+  styling: StylingOption,
+  prefix: string,
+): FileDraft | null {
+  const hasDeps = Object.keys(styling.dependencies).length > 0;
+  const hasDevDeps = Object.keys(styling.devDependencies).length > 0;
+
+  if (!hasDeps && !hasDevDeps) {
+    return null;
+  }
+
+  return {
+    kind: "dependency",
+    target: prefixPath(prefix, "package.json"),
+    deps: hasDeps ? { ...styling.dependencies } : undefined,
+    devDeps: hasDevDeps ? { ...styling.devDependencies } : undefined,
+    source: "styling",
+  };
+}
+
+function buildPostcssDraft(
+  styling: StylingOption,
+  prefix: string,
+): FileDraft | null {
   const needsTailwind = ["tailwind", "shadcn", "daisyui"].includes(styling.id);
   const needsPostcss = needsTailwind || ["mantine"].includes(styling.id);
 
-  // Tailwind v4: no tailwind.config.js needed — config is in CSS via @theme
-
-  if (needsPostcss) {
-    writePostcssConfig(appDir, styling);
+  if (!needsPostcss) {
+    return null;
   }
 
-  if (styling.id === "mantine") {
-    writePostcssConfig(appDir, styling);
-  }
-}
-
-function writePostcssConfig(appDir: string, styling: StylingOption): void {
   let config: string;
 
   if (styling.id === "mantine") {
@@ -123,14 +133,17 @@ export default config;
 `;
   }
 
-  fs.writeFileSync(path.join(appDir, "postcss.config.mjs"), config);
+  return {
+    kind: "text",
+    path: prefixPath(prefix, "postcss.config.mjs"),
+    content: config,
+  };
 }
 
-function writeGlobalsCss(appDir: string, styling: StylingOption): void {
-  const cssDir = path.join(appDir, "src", "app");
-  fs.mkdirSync(cssDir, { recursive: true });
-  const cssPath = path.join(cssDir, "globals.css");
-
+function buildGlobalsCssDraft(
+  styling: StylingOption,
+  prefix: string,
+): FileDraft | null {
   let css: string;
 
   switch (styling.id) {
@@ -265,20 +278,29 @@ function writeGlobalsCss(appDir: string, styling: StylingOption): void {
       break;
 
     default:
-      return;
+      return null;
   }
 
-  fs.writeFileSync(cssPath, css);
+  return {
+    kind: "text",
+    path: prefixPath(prefix, "src/app/globals.css"),
+    content: css,
+  };
 }
 
-function updateLayout(appDir: string, styling: StylingOption): void {
-  // Support both .tsx (new) and .js (legacy) layouts
-  let layoutPath = path.join(appDir, "src", "app", "layout.tsx");
-  if (!fs.existsSync(layoutPath)) {
-    layoutPath = path.join(appDir, "src", "app", "layout.js");
-  }
+function buildLayoutDrafts(
+  styling: StylingOption,
+  prefix: string,
+  templatesRoot: string,
+): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  if (!fs.existsSync(layoutPath)) return;
+  // Read layout from templatesRoot to extract metadata
+  let layoutPath = path.join(templatesRoot, prefix, "src", "app", "layout.tsx");
+  if (!fs.existsSync(layoutPath)) {
+    layoutPath = path.join(templatesRoot, prefix, "src", "app", "layout.js");
+  }
+  if (!fs.existsSync(layoutPath)) return drafts;
 
   const content = fs.readFileSync(layoutPath, "utf-8");
 
@@ -286,14 +308,38 @@ function updateLayout(appDir: string, styling: StylingOption): void {
 
   if (styling.id === "chakra") {
     updated = buildChakraLayout(content);
-    writeChakraProviders(appDir);
+    // Also produce providers.js draft
+    drafts.push({
+      kind: "text",
+      path: prefixPath(prefix, "src/app/providers.js"),
+      content: `"use client";
+
+import { ChakraProvider } from "@chakra-ui/react";
+
+export function ChakraProviders({ children }) {
+  return <ChakraProvider>{children}</ChakraProvider>;
+}
+`,
+    });
   } else if (styling.id === "mantine") {
     updated = buildMantineLayout(content);
   } else {
     updated = addGlobalsCssImport(content);
   }
 
-  fs.writeFileSync(layoutPath, updated);
+  // Determine the layout file extension based on the source
+  const ext = layoutPath.endsWith(".tsx") ? "layout.tsx" : "layout.js";
+  drafts.push({
+    kind: "text",
+    path: prefixPath(prefix, `src/app/${ext}`),
+    content: updated,
+    // Content was read from the template source, which still contains the
+    // {{project-name}} placeholder (in metadata.title). The writer must
+    // substitute it; otherwise the styled project ships with the literal.
+    replacePlaceholder: true,
+  });
+
+  return drafts;
 }
 
 function addGlobalsCssImport(content: string): string {
@@ -325,20 +371,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   );
 }
 `;
-}
-
-function writeChakraProviders(appDir: string): void {
-  fs.writeFileSync(
-    path.join(appDir, "src", "app", "providers.js"),
-    `"use client";
-
-import { ChakraProvider } from "@chakra-ui/react";
-
-export function ChakraProviders({ children }) {
-  return <ChakraProvider>{children}</ChakraProvider>;
-}
-`,
-  );
 }
 
 function buildMantineLayout(content: string): string {
@@ -373,23 +405,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
 // --- Page Rewrite per Styling ---
 
-function updatePage(
-  appDir: string,
+function buildPageDraft(
   template: TemplateInfo,
   styling: StylingOption,
-): void {
-  // Support both .tsx (new) and .js (legacy)
-  let pagePath = path.join(appDir, "src", "app", "page.tsx");
-  if (!fs.existsSync(pagePath)) {
-    pagePath = path.join(appDir, "src", "app", "page.js");
-  }
-  if (!fs.existsSync(pagePath)) return;
-
+  prefix: string,
+): FileDraft | null {
   const isFullstack = template.id === "fullstack-nextjs";
   const page = buildStyledPage(styling, isFullstack);
-  if (page) {
-    fs.writeFileSync(pagePath, page);
-  }
+  if (!page) return null;
+
+  return {
+    kind: "text",
+    path: prefixPath(prefix, "src/app/page.tsx"),
+    content: page,
+  };
 }
 
 function buildStyledPage(

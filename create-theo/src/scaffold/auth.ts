@@ -1,55 +1,45 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
-import { readPackageJson } from "./types.js";
+import type { FileDraft } from "./file-draft.js";
 
-export function applyAuth(targetDir: string, template: TemplateInfo): void {
+export function generateAuthDrafts(template: TemplateInfo): FileDraft[] {
   switch (template.language) {
     case "node":
       if (template.id === "node-fastify") {
-        applyAuthFastify(targetDir);
+        return generateAuthFastifyDrafts();
       } else if (template.id === "node-nestjs") {
-        applyAuthNestJS(targetDir);
+        return generateAuthNestJSDrafts();
       } else {
-        applyAuthExpress(targetDir);
+        return generateAuthExpressDrafts();
       }
-      break;
     case "go":
-      applyAuthGo(targetDir);
-      break;
+      return generateAuthGoDrafts();
     case "python":
-      applyAuthPython(targetDir);
-      break;
+      return generateAuthPythonDrafts();
     case "rust":
-      applyAuthRust(targetDir);
-      break;
+      return generateAuthRustDrafts();
     case "java":
-      applyAuthJava(targetDir);
-      break;
+      return generateAuthJavaDrafts();
     case "ruby":
-      applyAuthRuby(targetDir);
-      break;
+      return generateAuthRubyDrafts();
     case "php":
-      applyAuthPhp(targetDir);
-      break;
+      return generateAuthPhpDrafts();
+    default:
+      return [];
   }
 }
 
-function applyAuthExpress(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    jsonwebtoken: "^9.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const middlewareDir = path.join(targetDir, "src", "middleware");
-  fs.mkdirSync(middlewareDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(middlewareDir, "auth.js"),
-    `const jwt = require("jsonwebtoken");
+function generateAuthExpressDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { jsonwebtoken: "^9.0.0" },
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/middleware/auth.js",
+      content: `const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
 
@@ -72,25 +62,22 @@ function generateToken(payload) {
 
 module.exports = { authenticate, generateToken };
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthFastify(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    jsonwebtoken: "^9.0.0",
-    "fastify-plugin": "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const pluginsDir = path.join(targetDir, "src", "plugins");
-  fs.mkdirSync(pluginsDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(pluginsDir, "auth.js"),
-    `const fp = require("fastify-plugin");
+function generateAuthFastifyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { jsonwebtoken: "^9.0.0", "fastify-plugin": "^5.0.0" },
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/plugins/auth.js",
+      content: `const fp = require("fastify-plugin");
 const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
@@ -114,28 +101,23 @@ module.exports = fp(async function authPlugin(fastify) {
   });
 });
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthNestJS(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    jsonwebtoken: "^9.0.0",
-  };
-  pkg.devDependencies = {
-    ...(pkg.devDependencies as Record<string, string>),
-    "@types/jsonwebtoken": "^9.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const guardsDir = path.join(targetDir, "src", "guards");
-  fs.mkdirSync(guardsDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(guardsDir, "auth.guard.ts"),
-    `import {
+function generateAuthNestJSDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { jsonwebtoken: "^9.0.0" },
+      devDeps: { "@types/jsonwebtoken": "^9.0.0" },
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/guards/auth.guard.ts",
+      content: `import {
   CanActivate,
   ExecutionContext,
   Injectable,
@@ -164,21 +146,22 @@ export function generateToken(payload: Record<string, unknown>): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthGo(targetDir: string): void {
-  const goModPath = path.join(targetDir, "go.mod");
-  let goMod = fs.readFileSync(goModPath, "utf-8");
-  goMod += `\nrequire github.com/golang-jwt/jwt/v5 v5.2.1\n`;
-  fs.writeFileSync(goModPath, goMod);
-
-  const authDir = path.join(targetDir, "internal", "auth");
-  fs.mkdirSync(authDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(authDir, "auth.go"),
-    `package auth
+function generateAuthGoDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "go.mod",
+      appendText: `\nrequire github.com/golang-jwt/jwt/v5 v5.2.1\n`,
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "internal/auth/auth.go",
+      content: `package auth
 
 import (
 \t"encoding/json"
@@ -240,18 +223,22 @@ func GenerateToken(claims map[string]interface{}) (string, error) {
 \treturn token.SignedString(jwtSecret)
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthPython(targetDir: string): void {
-  const reqPath = path.join(targetDir, "requirements.txt");
-  let reqs = fs.readFileSync(reqPath, "utf-8");
-  reqs += "pyjwt>=2.0.0\n";
-  fs.writeFileSync(reqPath, reqs);
-
-  fs.writeFileSync(
-    path.join(targetDir, "auth.py"),
-    `import os
+function generateAuthPythonDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "requirements.txt",
+      appendText: "pyjwt>=2.0.0\n",
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "auth.py",
+      content: `import os
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -278,19 +265,22 @@ def generate_token(payload: dict) -> str:
     payload["exp"] = datetime.now(timezone.utc) + timedelta(hours=24)
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthRust(targetDir: string): void {
-  const cargoPath = path.join(targetDir, "Cargo.toml");
-  let cargo = fs.readFileSync(cargoPath, "utf-8");
-  cargo += `\n[dependencies.jsonwebtoken]\nversion = "9"\n`;
-  fs.writeFileSync(cargoPath, cargo);
-
-  const srcDir = path.join(targetDir, "src");
-  fs.writeFileSync(
-    path.join(srcDir, "auth.rs"),
-    `use axum::{
+function generateAuthRustDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Cargo.toml",
+      appendText: `\n[dependencies.jsonwebtoken]\nversion = "9"\n`,
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/auth.rs",
+      content: `use axum::{
     extract::Request,
     http::{header, StatusCode},
     middleware::Next,
@@ -341,25 +331,31 @@ pub fn generate_token(sub: &str) -> Result<String, jsonwebtoken::errors::Error> 
     encode(&Header::default(), &claims, &EncodingKey::from_secret(get_secret().as_bytes()))
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthJava(targetDir: string): void {
-  const buildFile = path.join(targetDir, "build.gradle.kts");
-  let gradle = fs.readFileSync(buildFile, "utf-8");
-  gradle = gradle.replace(
-    'implementation("org.springframework.boot:spring-boot-starter-web")',
-    `implementation("org.springframework.boot:spring-boot-starter-web")
+function generateAuthJavaDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "build.gradle.kts",
+      replacePatterns: [
+        {
+          search:
+            'implementation("org.springframework.boot:spring-boot-starter-web")',
+          replace: `implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("io.jsonwebtoken:jjwt-api:0.12.5")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.5")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.5")`,
-  );
-  fs.writeFileSync(buildFile, gradle);
-
-  const filterDir = path.join(targetDir, "src", "main", "java", "com", "theo", "app", "config");
-  fs.writeFileSync(
-    path.join(filterDir, "JwtFilter.java"),
-    `package com.theo.app.config;
+        },
+      ],
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/main/java/com/theo/app/config/JwtFilter.java",
+      content: `package com.theo.app.config;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -403,18 +399,22 @@ public class JwtFilter implements Filter {
     }
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthRuby(targetDir: string): void {
-  const gemfile = path.join(targetDir, "Gemfile");
-  let gems = fs.readFileSync(gemfile, "utf-8");
-  gems += `\ngem "jwt", "~> 2.8"\n`;
-  fs.writeFileSync(gemfile, gems);
-
-  fs.writeFileSync(
-    path.join(targetDir, "auth.rb"),
-    `require "jwt"
+function generateAuthRubyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Gemfile",
+      appendText: `\ngem "jwt", "~> 2.8"\n`,
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "auth.rb",
+      content: `require "jwt"
 
 JWT_SECRET = ENV.fetch("JWT_SECRET", "change-me-in-production")
 
@@ -435,403 +435,22 @@ def generate_token(payload)
   JWT.encode(payload, JWT_SECRET, "HS256")
 end
 `,
-  );
+    },
+  ];
 }
 
-// --- Auth OAuth/OIDC ---
-
-export function applyAuthOAuth(targetDir: string, template: TemplateInfo): void {
-  switch (template.language) {
-    case "node":
-      if (template.id === "node-fastify") {
-        applyAuthOAuthFastify(targetDir);
-      } else if (template.id === "node-nestjs") {
-        applyAuthOAuthNestJS(targetDir);
-      } else {
-        applyAuthOAuthExpress(targetDir);
-      }
-      break;
-    case "go":
-      applyAuthOAuthGo(targetDir);
-      break;
-    case "python":
-      applyAuthOAuthPython(targetDir);
-      break;
-    case "rust":
-      applyAuthOAuthRust(targetDir);
-      break;
-    case "java":
-      applyAuthOAuthJava(targetDir);
-      break;
-    case "ruby":
-      applyAuthOAuthRuby(targetDir);
-      break;
-    case "php":
-      applyAuthOAuthPhp(targetDir);
-      break;
-  }
-}
-
-function applyAuthOAuthExpress(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    "openid-client": "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const middlewareDir = path.join(targetDir, "src", "middleware");
-  fs.mkdirSync(middlewareDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(middlewareDir, "oauth.js"),
-    `const { Issuer } = require("openid-client");
-
-let client;
-
-async function initOIDC() {
-  const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL);
-  client = new issuer.Client({
-    client_id: process.env.OIDC_CLIENT_ID,
-    client_secret: process.env.OIDC_CLIENT_SECRET,
-  });
-}
-
-async function authenticate(req, res, next) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  try {
-    if (!client) await initOIDC();
-    const userinfo = await client.userinfo(token);
-    req.user = userinfo;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
-}
-
-module.exports = { authenticate, initOIDC };
-`,
-  );
-}
-
-function applyAuthOAuthFastify(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    "openid-client": "^5.0.0",
-    "fastify-plugin": "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const pluginsDir = path.join(targetDir, "src", "plugins");
-  fs.mkdirSync(pluginsDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(pluginsDir, "oauth.js"),
-    `const fp = require("fastify-plugin");
-const { Issuer } = require("openid-client");
-
-module.exports = fp(async function oauthPlugin(fastify) {
-  const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL);
-  const client = new issuer.Client({
-    client_id: process.env.OIDC_CLIENT_ID,
-    client_secret: process.env.OIDC_CLIENT_SECRET,
-  });
-
-  fastify.decorate("authenticate", async function (request, reply) {
-    const token = request.headers.authorization?.replace("Bearer ", "");
-    if (!token) {
-      reply.code(401).send({ error: "Unauthorized" });
-      return;
-    }
-    try {
-      request.user = await client.userinfo(token);
-    } catch {
-      reply.code(401).send({ error: "Invalid token" });
-    }
-  });
-});
-`,
-  );
-}
-
-function applyAuthOAuthNestJS(targetDir: string): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    "openid-client": "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-
-  const guardsDir = path.join(targetDir, "src", "guards");
-  fs.mkdirSync(guardsDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(guardsDir, "oauth.guard.ts"),
-    `import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
-import { Issuer } from "openid-client";
-
-let client: any;
-
-@Injectable()
-export class OAuthGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const token = request.headers.authorization?.replace("Bearer ", "");
-    if (!token) throw new UnauthorizedException();
-    try {
-      if (!client) {
-        const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL!);
-        client = new issuer.Client({
-          client_id: process.env.OIDC_CLIENT_ID!,
-          client_secret: process.env.OIDC_CLIENT_SECRET!,
-        });
-      }
-      request.user = await client.userinfo(token);
-      return true;
-    } catch {
-      throw new UnauthorizedException();
-    }
-  }
-}
-`,
-  );
-}
-
-function applyAuthOAuthGo(targetDir: string): void {
-  const goModPath = path.join(targetDir, "go.mod");
-  let goMod = fs.readFileSync(goModPath, "utf-8");
-  goMod += `\nrequire (\n\tgithub.com/coreos/go-oidc/v3 v3.10.0\n\tgolang.org/x/oauth2 v0.21.0\n)\n`;
-  fs.writeFileSync(goModPath, goMod);
-
-  const authDir = path.join(targetDir, "internal", "auth");
-  fs.mkdirSync(authDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(authDir, "oauth.go"),
-    `package auth
-
-import (
-\t"context"
-\t"encoding/json"
-\t"net/http"
-\t"os"
-\t"strings"
-
-\t"github.com/coreos/go-oidc/v3/oidc"
-)
-
-var verifier *oidc.IDTokenVerifier
-
-func InitOIDC() error {
-\tprovider, err := oidc.NewProvider(context.Background(), os.Getenv("OIDC_ISSUER_URL"))
-\tif err != nil {
-\t\treturn err
-\t}
-\tverifier = provider.Verifier(&oidc.Config{ClientID: os.Getenv("OIDC_CLIENT_ID")})
-\treturn nil
-}
-
-func OAuthAuthenticate(next http.Handler) http.Handler {
-\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-\t\tauth := r.Header.Get("Authorization")
-\t\ttokenStr := strings.TrimPrefix(auth, "Bearer ")
-\t\tif tokenStr == "" || tokenStr == auth {
-\t\t\tw.Header().Set("Content-Type", "application/json")
-\t\t\tw.WriteHeader(http.StatusUnauthorized)
-\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
-\t\t\treturn
-\t\t}
-
-\t\t_, err := verifier.Verify(r.Context(), tokenStr)
-\t\tif err != nil {
-\t\t\tw.Header().Set("Content-Type", "application/json")
-\t\t\tw.WriteHeader(http.StatusUnauthorized)
-\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Invalid token"})
-\t\t\treturn
-\t\t}
-
-\t\tnext.ServeHTTP(w, r)
-\t})
-}
-`,
-  );
-}
-
-function applyAuthOAuthPython(targetDir: string): void {
-  const reqPath = path.join(targetDir, "requirements.txt");
-  let reqs = fs.readFileSync(reqPath, "utf-8");
-  reqs += "authlib>=1.3.0\nhttpx>=0.27.0\n";
-  fs.writeFileSync(reqPath, reqs);
-
-  fs.writeFileSync(
-    path.join(targetDir, "oauth.py"),
-    `import os
-
-import httpx
-from authlib.integrations.starlette_client import OAuth
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
-OIDC_ISSUER_URL = os.getenv("OIDC_ISSUER_URL", "https://your-provider.com")
-OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "your-client-id")
-
-security = HTTPBearer()
-
-
-async def authenticate(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{OIDC_ISSUER_URL}/userinfo",
-                headers={"Authorization": f"Bearer {credentials.credentials}"},
-            )
-            if resp.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-                )
-            return resp.json()
-    except httpx.HTTPError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-        )
-`,
-  );
-}
-
-function applyAuthOAuthRust(targetDir: string): void {
-  const cargoPath = path.join(targetDir, "Cargo.toml");
-  let cargo = fs.readFileSync(cargoPath, "utf-8");
-  cargo += `\n[dependencies.openidconnect]\nversion = "3"\n\n[dependencies.reqwest]\nversion = "0.12"\nfeatures = ["json"]\n`;
-  fs.writeFileSync(cargoPath, cargo);
-
-  const srcDir = path.join(targetDir, "src");
-  fs.writeFileSync(
-    path.join(srcDir, "oauth.rs"),
-    `use axum::{
-    extract::Request,
-    http::{header, StatusCode},
-    middleware::Next,
-    response::{IntoResponse, Response},
-    Json,
-};
-use serde_json::json;
-
-pub async fn authenticate(req: Request, next: Next) -> Response {
-    let auth_header = req
-        .headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
-
-    let token = auth_header.strip_prefix("Bearer ").unwrap_or("");
-    if token.is_empty() {
-        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response();
-    }
-
-    let issuer_url = std::env::var("OIDC_ISSUER_URL").unwrap_or_default();
-    let client = reqwest::Client::new();
-    match client
-        .get(format!("{}/userinfo", issuer_url))
-        .bearer_auth(token)
-        .send()
-        .await
+function generateAuthPhpDrafts(): FileDraft[] {
+  return [
     {
-        Ok(resp) if resp.status().is_success() => next.run(req).await,
-        _ => (StatusCode::UNAUTHORIZED, Json(json!({"error": "Invalid token"}))).into_response(),
-    }
-}
-`,
-  );
-}
-
-function applyAuthOAuthJava(targetDir: string): void {
-  const buildFile = path.join(targetDir, "build.gradle.kts");
-  let gradle = fs.readFileSync(buildFile, "utf-8");
-  gradle = gradle.replace(
-    'implementation("org.springframework.boot:spring-boot-starter-web")',
-    `implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")`,
-  );
-  fs.writeFileSync(buildFile, gradle);
-
-  const appYml = path.join(targetDir, "src", "main", "resources", "application.yml");
-  let yml = fs.readFileSync(appYml, "utf-8");
-  yml += `
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: \${OIDC_ISSUER_URL:https://your-provider.com}
-`;
-  fs.writeFileSync(appYml, yml);
-}
-
-function applyAuthOAuthRuby(targetDir: string): void {
-  const gemfile = path.join(targetDir, "Gemfile");
-  let gems = fs.readFileSync(gemfile, "utf-8");
-  gems += `\ngem "omniauth", "~> 2.1"\ngem "omniauth_openid_connect", "~> 0.7"\n`;
-  fs.writeFileSync(gemfile, gems);
-
-  fs.writeFileSync(
-    path.join(targetDir, "oauth.rb"),
-    `require "net/http"
-require "json"
-
-OIDC_ISSUER_URL = ENV.fetch("OIDC_ISSUER_URL", "https://your-provider.com")
-
-def authenticate_oauth!(request)
-  auth = request.env["HTTP_AUTHORIZATION"]
-  halt 401, { error: "Unauthorized" }.to_json unless auth&.start_with?("Bearer ")
-
-  token = auth.sub("Bearer ", "")
-  uri = URI("#{OIDC_ISSUER_URL}/userinfo")
-  req = Net::HTTP::Get.new(uri)
-  req["Authorization"] = "Bearer #{token}"
-
-  res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
-    http.request(req)
-  end
-
-  halt 401, { error: "Invalid token" }.to_json unless res.is_a?(Net::HTTPOK)
-  JSON.parse(res.body)
-end
-`,
-  );
-}
-
-// --- Auth OAuth (PHP) ---
-
-function applyAuthPhp(targetDir: string): void {
-  const composerPath = path.join(targetDir, "composer.json");
-  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
-
-  composer.require = {
-    ...composer.require,
-    "firebase/php-jwt": "^6.0",
-  };
-
-  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
-
-  const middlewareDir = path.join(targetDir, "src", "Middleware");
-  fs.mkdirSync(middlewareDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(middlewareDir, "AuthJwt.php"),
-    `<?php
+      kind: "dependency",
+      target: "composer.json",
+      deps: { "firebase/php-jwt": "^6.0" },
+      source: "auth-jwt",
+    },
+    {
+      kind: "text",
+      path: "src/Middleware/AuthJwt.php",
+      content: `<?php
 
 declare(strict_types=1);
 
@@ -881,26 +500,405 @@ class AuthJwt implements MiddlewareInterface
     }
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyAuthOAuthPhp(targetDir: string): void {
-  const composerPath = path.join(targetDir, "composer.json");
-  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+// --- Auth OAuth/OIDC ---
 
-  composer.require = {
-    ...composer.require,
-    "guzzlehttp/guzzle": "^7.0",
-  };
+export function generateAuthOAuthDrafts(template: TemplateInfo): FileDraft[] {
+  switch (template.language) {
+    case "node":
+      if (template.id === "node-fastify") {
+        return generateAuthOAuthFastifyDrafts();
+      } else if (template.id === "node-nestjs") {
+        return generateAuthOAuthNestJSDrafts();
+      } else {
+        return generateAuthOAuthExpressDrafts();
+      }
+    case "go":
+      return generateAuthOAuthGoDrafts();
+    case "python":
+      return generateAuthOAuthPythonDrafts();
+    case "rust":
+      return generateAuthOAuthRustDrafts();
+    case "java":
+      return generateAuthOAuthJavaDrafts();
+    case "ruby":
+      return generateAuthOAuthRubyDrafts();
+    case "php":
+      return generateAuthOAuthPhpDrafts();
+    default:
+      return [];
+  }
+}
 
-  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
+function generateAuthOAuthExpressDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { "openid-client": "^5.0.0" },
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "src/middleware/oauth.js",
+      content: `const { Issuer } = require("openid-client");
 
-  const middlewareDir = path.join(targetDir, "src", "Middleware");
-  fs.mkdirSync(middlewareDir, { recursive: true });
+let client;
 
-  fs.writeFileSync(
-    path.join(middlewareDir, "AuthOAuth.php"),
-    `<?php
+async function initOIDC() {
+  const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL);
+  client = new issuer.Client({
+    client_id: process.env.OIDC_CLIENT_ID,
+    client_secret: process.env.OIDC_CLIENT_SECRET,
+  });
+}
+
+async function authenticate(req, res, next) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    if (!client) await initOIDC();
+    const userinfo = await client.userinfo(token);
+    req.user = userinfo;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+module.exports = { authenticate, initOIDC };
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthFastifyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { "openid-client": "^5.0.0", "fastify-plugin": "^5.0.0" },
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "src/plugins/oauth.js",
+      content: `const fp = require("fastify-plugin");
+const { Issuer } = require("openid-client");
+
+module.exports = fp(async function oauthPlugin(fastify) {
+  const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL);
+  const client = new issuer.Client({
+    client_id: process.env.OIDC_CLIENT_ID,
+    client_secret: process.env.OIDC_CLIENT_SECRET,
+  });
+
+  fastify.decorate("authenticate", async function (request, reply) {
+    const token = request.headers.authorization?.replace("Bearer ", "");
+    if (!token) {
+      reply.code(401).send({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      request.user = await client.userinfo(token);
+    } catch {
+      reply.code(401).send({ error: "Invalid token" });
+    }
+  });
+});
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthNestJSDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "package.json",
+      deps: { "openid-client": "^5.0.0" },
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "src/guards/oauth.guard.ts",
+      content: `import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { Issuer } from "openid-client";
+
+let client: any;
+
+@Injectable()
+export class OAuthGuard implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const token = request.headers.authorization?.replace("Bearer ", "");
+    if (!token) throw new UnauthorizedException();
+    try {
+      if (!client) {
+        const issuer = await Issuer.discover(process.env.OIDC_ISSUER_URL!);
+        client = new issuer.Client({
+          client_id: process.env.OIDC_CLIENT_ID!,
+          client_secret: process.env.OIDC_CLIENT_SECRET!,
+        });
+      }
+      request.user = await client.userinfo(token);
+      return true;
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+}
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthGoDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "go.mod",
+      appendText: `\nrequire (\n\tgithub.com/coreos/go-oidc/v3 v3.10.0\n\tgolang.org/x/oauth2 v0.21.0\n)\n`,
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "internal/auth/oauth.go",
+      content: `package auth
+
+import (
+\t"context"
+\t"encoding/json"
+\t"net/http"
+\t"os"
+\t"strings"
+
+\t"github.com/coreos/go-oidc/v3/oidc"
+)
+
+var verifier *oidc.IDTokenVerifier
+
+func InitOIDC() error {
+\tprovider, err := oidc.NewProvider(context.Background(), os.Getenv("OIDC_ISSUER_URL"))
+\tif err != nil {
+\t\treturn err
+\t}
+\tverifier = provider.Verifier(&oidc.Config{ClientID: os.Getenv("OIDC_CLIENT_ID")})
+\treturn nil
+}
+
+func OAuthAuthenticate(next http.Handler) http.Handler {
+\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+\t\tauth := r.Header.Get("Authorization")
+\t\ttokenStr := strings.TrimPrefix(auth, "Bearer ")
+\t\tif tokenStr == "" || tokenStr == auth {
+\t\t\tw.Header().Set("Content-Type", "application/json")
+\t\t\tw.WriteHeader(http.StatusUnauthorized)
+\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
+\t\t\treturn
+\t\t}
+
+\t\t_, err := verifier.Verify(r.Context(), tokenStr)
+\t\tif err != nil {
+\t\t\tw.Header().Set("Content-Type", "application/json")
+\t\t\tw.WriteHeader(http.StatusUnauthorized)
+\t\t\tjson.NewEncoder(w).Encode(map[string]string{"error": "Invalid token"})
+\t\t\treturn
+\t\t}
+
+\t\tnext.ServeHTTP(w, r)
+\t})
+}
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthPythonDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "requirements.txt",
+      appendText: "authlib>=1.3.0\nhttpx>=0.27.0\n",
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "oauth.py",
+      content: `import os
+
+import httpx
+from authlib.integrations.starlette_client import OAuth
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+OIDC_ISSUER_URL = os.getenv("OIDC_ISSUER_URL", "https://your-provider.com")
+OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "your-client-id")
+
+security = HTTPBearer()
+
+
+async def authenticate(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{OIDC_ISSUER_URL}/userinfo",
+                headers={"Authorization": f"Bearer {credentials.credentials}"},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+                )
+            return resp.json()
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthRustDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Cargo.toml",
+      appendText: `\n[dependencies.openidconnect]\nversion = "3"\n\n[dependencies.reqwest]\nversion = "0.12"\nfeatures = ["json"]\n`,
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "src/oauth.rs",
+      content: `use axum::{
+    extract::Request,
+    http::{header, StatusCode},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde_json::json;
+
+pub async fn authenticate(req: Request, next: Next) -> Response {
+    let auth_header = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let token = auth_header.strip_prefix("Bearer ").unwrap_or("");
+    if token.is_empty() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response();
+    }
+
+    let issuer_url = std::env::var("OIDC_ISSUER_URL").unwrap_or_default();
+    let client = reqwest::Client::new();
+    match client
+        .get(format!("{}/userinfo", issuer_url))
+        .bearer_auth(token)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => next.run(req).await,
+        _ => (StatusCode::UNAUTHORIZED, Json(json!({"error": "Invalid token"}))).into_response(),
+    }
+}
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthJavaDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "build.gradle.kts",
+      replacePatterns: [
+        {
+          search:
+            'implementation("org.springframework.boot:spring-boot-starter-web")',
+          replace: `implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")`,
+        },
+      ],
+      source: "auth-oauth",
+    },
+    {
+      kind: "dependency",
+      target: "src/main/resources/application.yml",
+      appendText: `
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: \${OIDC_ISSUER_URL:https://your-provider.com}
+`,
+      source: "auth-oauth",
+    },
+  ];
+}
+
+function generateAuthOAuthRubyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Gemfile",
+      appendText: `\ngem "omniauth", "~> 2.1"\ngem "omniauth_openid_connect", "~> 0.7"\n`,
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "oauth.rb",
+      content: `require "net/http"
+require "json"
+
+OIDC_ISSUER_URL = ENV.fetch("OIDC_ISSUER_URL", "https://your-provider.com")
+
+def authenticate_oauth!(request)
+  auth = request.env["HTTP_AUTHORIZATION"]
+  halt 401, { error: "Unauthorized" }.to_json unless auth&.start_with?("Bearer ")
+
+  token = auth.sub("Bearer ", "")
+  uri = URI("#{OIDC_ISSUER_URL}/userinfo")
+  req = Net::HTTP::Get.new(uri)
+  req["Authorization"] = "Bearer #{token}"
+
+  res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+    http.request(req)
+  end
+
+  halt 401, { error: "Invalid token" }.to_json unless res.is_a?(Net::HTTPOK)
+  JSON.parse(res.body)
+end
+`,
+    },
+  ];
+}
+
+function generateAuthOAuthPhpDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "composer.json",
+      deps: { "guzzlehttp/guzzle": "^7.0" },
+      source: "auth-oauth",
+    },
+    {
+      kind: "text",
+      path: "src/Middleware/AuthOAuth.php",
+      content: `<?php
 
 declare(strict_types=1);
 
@@ -957,5 +955,6 @@ class AuthOAuth implements MiddlewareInterface
     }
 }
 `,
-  );
+    },
+  ];
 }

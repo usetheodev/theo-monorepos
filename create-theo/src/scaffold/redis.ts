@@ -1,80 +1,75 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
-import { readPackageJson } from "./types.js";
+import type { FileDraft } from "./file-draft.js";
 
-export function applyRedis(targetDir: string, template: TemplateInfo): void {
+export function generateRedisDrafts(template: TemplateInfo): FileDraft[] {
   switch (template.language) {
     case "node":
-      applyRedisNode(targetDir, template);
-      break;
+      return generateRedisNodeDrafts(template);
     case "go":
-      applyRedisGo(targetDir);
-      break;
+      return generateRedisGoDrafts();
     case "python":
-      applyRedisPython(targetDir);
-      break;
+      return generateRedisPythonDrafts();
     case "rust":
-      applyRedisRust(targetDir);
-      break;
+      return generateRedisRustDrafts();
     case "java":
-      applyRedisJava(targetDir);
-      break;
+      return generateRedisJavaDrafts();
     case "ruby":
-      applyRedisRuby(targetDir);
-      break;
+      return generateRedisRubyDrafts();
     case "php":
-      applyRedisPhp(targetDir);
-      break;
+      return generateRedisPhpDrafts();
+    default:
+      return [];
   }
 }
 
-function applyRedisNode(targetDir: string, template: TemplateInfo): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    ioredis: "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+function generateRedisNodeDrafts(template: TemplateInfo): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  const libDir = path.join(targetDir, "src", "lib");
-  fs.mkdirSync(libDir, { recursive: true });
+  drafts.push({
+    kind: "dependency",
+    target: "package.json",
+    deps: { ioredis: "^5.0.0" },
+    source: "redis",
+  });
 
   const isTypeScript = template.id === "node-nestjs";
   if (isTypeScript) {
-    fs.writeFileSync(
-      path.join(libDir, "redis.ts"),
-      `import Redis from "ioredis";
+    drafts.push({
+      kind: "text",
+      path: "src/lib/redis.ts",
+      content: `import Redis from "ioredis";
 
 export const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 `,
-    );
+    });
   } else {
-    fs.writeFileSync(
-      path.join(libDir, "redis.js"),
-      `const Redis = require("ioredis");
+    drafts.push({
+      kind: "text",
+      path: "src/lib/redis.js",
+      content: `const Redis = require("ioredis");
 
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 module.exports = { redis };
 `,
-    );
+    });
   }
+
+  return drafts;
 }
 
-function applyRedisGo(targetDir: string): void {
-  const goModPath = path.join(targetDir, "go.mod");
-  let goMod = fs.readFileSync(goModPath, "utf-8");
-  goMod += `\nrequire github.com/redis/go-redis/v9 v9.7.0\n`;
-  fs.writeFileSync(goModPath, goMod);
-
-  const cacheDir = path.join(targetDir, "internal", "cache");
-  fs.mkdirSync(cacheDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(cacheDir, "redis.go"),
-    `package cache
+function generateRedisGoDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "go.mod",
+      appendText: `\nrequire github.com/redis/go-redis/v9 v9.7.0\n`,
+      source: "redis",
+    },
+    {
+      kind: "text",
+      path: "internal/cache/redis.go",
+      content: `package cache
 
 import (
 \t"context"
@@ -100,97 +95,112 @@ func Connect() error {
 \treturn Client.Ping(context.Background()).Err()
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyRedisPython(targetDir: string): void {
-  const reqPath = path.join(targetDir, "requirements.txt");
-  let reqs = fs.readFileSync(reqPath, "utf-8");
-  reqs += "redis>=5.0.0\n";
-  fs.writeFileSync(reqPath, reqs);
-
-  fs.writeFileSync(
-    path.join(targetDir, "cache.py"),
-    `import os
+function generateRedisPythonDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "requirements.txt",
+      appendText: "redis>=5.0.0\n",
+      source: "redis",
+    },
+    {
+      kind: "text",
+      path: "cache.py",
+      content: `import os
 
 import redis
 
 r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
 `,
-  );
+    },
+  ];
 }
 
-function applyRedisRust(targetDir: string): void {
-  const cargoPath = path.join(targetDir, "Cargo.toml");
-  let cargo = fs.readFileSync(cargoPath, "utf-8");
-  cargo += `\n[dependencies.redis]\nversion = "0.25"\nfeatures = ["tokio-comp"]\n`;
-  fs.writeFileSync(cargoPath, cargo);
-
-  const srcDir = path.join(targetDir, "src");
-  fs.writeFileSync(
-    path.join(srcDir, "cache.rs"),
-    `use redis::AsyncCommands;
+function generateRedisRustDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Cargo.toml",
+      appendText: `\n[dependencies.redis]\nversion = "0.25"\nfeatures = ["tokio-comp"]\n`,
+      source: "redis",
+    },
+    {
+      kind: "text",
+      path: "src/cache.rs",
+      content: `use redis::AsyncCommands;
 
 pub async fn get_client() -> redis::Client {
     let url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
     redis::Client::open(url).expect("Invalid Redis URL")
 }
 `,
-  );
+    },
+  ];
 }
 
-function applyRedisJava(targetDir: string): void {
-  const buildFile = path.join(targetDir, "build.gradle.kts");
-  let gradle = fs.readFileSync(buildFile, "utf-8");
-  gradle = gradle.replace(
-    'implementation("org.springframework.boot:spring-boot-starter-web")',
-    `implementation("org.springframework.boot:spring-boot-starter-web")
+function generateRedisJavaDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "build.gradle.kts",
+      replacePatterns: [
+        {
+          search:
+            'implementation("org.springframework.boot:spring-boot-starter-web")',
+          replace: `implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")`,
-  );
-  fs.writeFileSync(buildFile, gradle);
-
-  const appYml = path.join(targetDir, "src", "main", "resources", "application.yml");
-  let yml = fs.readFileSync(appYml, "utf-8");
-  yml += `
+        },
+      ],
+      source: "redis",
+    },
+    {
+      kind: "dependency",
+      target: "src/main/resources/application.yml",
+      appendText: `
   data:
     redis:
       url: \${REDIS_URL:redis://localhost:6379}
-`;
-  fs.writeFileSync(appYml, yml);
+`,
+      source: "redis",
+    },
+  ];
 }
 
-function applyRedisRuby(targetDir: string): void {
-  const gemfile = path.join(targetDir, "Gemfile");
-  let gems = fs.readFileSync(gemfile, "utf-8");
-  gems += `\ngem "redis", "~> 5.0"\n`;
-  fs.writeFileSync(gemfile, gems);
-
-  fs.writeFileSync(
-    path.join(targetDir, "cache.rb"),
-    `require "redis"
+function generateRedisRubyDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "Gemfile",
+      appendText: `\ngem "redis", "~> 5.0"\n`,
+      source: "redis",
+    },
+    {
+      kind: "text",
+      path: "cache.rb",
+      content: `require "redis"
 
 REDIS = Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379"))
 `,
-  );
+    },
+  ];
 }
 
-function applyRedisPhp(targetDir: string): void {
-  const composerPath = path.join(targetDir, "composer.json");
-  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
-
-  composer.require = {
-    ...composer.require,
-    "predis/predis": "^2.0",
-  };
-
-  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
-
-  const srcDir = path.join(targetDir, "src");
-  fs.mkdirSync(srcDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(srcDir, "cache.php"),
-    `<?php
+function generateRedisPhpDrafts(): FileDraft[] {
+  return [
+    {
+      kind: "dependency",
+      target: "composer.json",
+      deps: { "predis/predis": "^2.0" },
+      source: "redis",
+    },
+    {
+      kind: "text",
+      path: "src/cache.php",
+      content: `<?php
 
 declare(strict_types=1);
 
@@ -199,5 +209,6 @@ use Predis\\Client;
 $redisUrl = getenv('REDIS_URL') ?: 'redis://localhost:6379';
 $redis = new Client($redisUrl);
 `,
-  );
+    },
+  ];
 }

@@ -161,4 +161,63 @@ describe("parametric styling scaffold with node-nextjs", () => {
     const expected = expectedConfigFiles[stylingId];
     expect(fs.existsSync(path.join(targetDir, "postcss.config.mjs"))).toBe(expected.postcss);
   });
+
+  it.each(listStylingIds().filter((id) => id !== "none"))(
+    "styling=%s substitutes {{project-name}} in src/app/layout.tsx (regression)",
+    (stylingId) => {
+      const template = getTemplate("node-nextjs")!;
+      const styling = getStylingOption(stylingId)!;
+      const projectName = `style-layout-${stylingId}`;
+      const targetDir = path.join(tempDir, projectName);
+
+      scaffold({
+        projectName,
+        template,
+        targetDir,
+        styling,
+        skipInstall: true,
+        skipGit: true,
+      });
+
+      const layout = fs.readFileSync(
+        path.join(targetDir, "src/app/layout.tsx"),
+        "utf-8",
+      );
+      expect(layout).not.toContain("{{project-name}}");
+      expect(layout).toContain(`title: "${projectName}"`);
+    },
+  );
+});
+
+describe("parametric styling scaffold with fullstack-nextjs (regression)", () => {
+  let tempDir: string;
+
+  beforeEach(() => { tempDir = createTempDir(); });
+  afterEach(() => { cleanup(tempDir); });
+
+  it.each(listStylingIds().filter((id) => id !== "none"))(
+    "styling=%s substitutes {{project-name}} in src/app/layout.tsx",
+    (stylingId) => {
+      const template = getTemplate("fullstack-nextjs")!;
+      const styling = getStylingOption(stylingId)!;
+      const projectName = `fs-layout-${stylingId}`;
+      const targetDir = path.join(tempDir, projectName);
+
+      scaffold({
+        projectName,
+        template,
+        targetDir,
+        styling,
+        skipInstall: true,
+        skipGit: true,
+      });
+
+      const layout = fs.readFileSync(
+        path.join(targetDir, "src/app/layout.tsx"),
+        "utf-8",
+      );
+      expect(layout).not.toContain("{{project-name}}");
+      expect(layout).toContain(`title: "${projectName}"`);
+    },
+  );
 });
