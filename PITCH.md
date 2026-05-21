@@ -34,7 +34,7 @@ You pick a language. You pick a stack. You get a project — with the things eve
 - **Frontend that ships in 2026.** Next.js 16 (App Router, Turbopack), React 19.2, Tailwind v4 zero-config, ESLint flat config, dark mode, shadcn/ui ready. Not a 2022 starter kit.
 - **Package-manager agnostic.** Auto-detects npm, pnpm, yarn, or bun. Lock files removed after scaffold so your team picks freely.
 - **Preview before you write.** `--dry-run` lists every file that would be created — including modules and database — before touching disk.
-- **Deploy anywhere.** Every template works on Theo PaaS, Docker, Railway, Fly.io, or your own infra. Health probes, Dockerfile, and graceful shutdown ship by default.
+- **Deploy anywhere.** Every template works on TheoCloud, Docker, Railway, Fly.io, or your own infra. Health probes, Dockerfile, and graceful shutdown ship by default.
 
 ## Feel it
 
@@ -57,7 +57,7 @@ One command. Modules composed. Database wired. Production shape. Ready to deploy
 ## What you'd ship
 
 - **A real backend, in any language.** Pick Go, Python, Rust, or Java for the team's strengths. Pick Node for shared types with the frontend. TheoCreate doesn't force TypeScript to get nice scaffolding.
-- **A multi-tenant SaaS in a weekend.** `monorepo-turbo` (Express + Next.js) or `monorepo-go` (Go workspaces). Auth, queue, Postgres — three flags. Deploy to Theo PaaS in 4 minutes.
+- **A multi-tenant SaaS in a weekend.** `monorepo-turbo` (Express + Next.js) or `monorepo-go` (Go workspaces). Auth, queue, Postgres — three flags. Deploy to TheoCloud in 4 minutes.
 - **An API for your AI agent.** `node-fastify` + `--add auth-jwt,queue` and you have a job-queue-backed API the agent can hit. Pair with TheoKit for the frontend surface.
 - **A migration off a 2022 starter.** Modern toolchain — Next.js 16, Tailwind v4, ESLint flat config, strict TypeScript. Replace one file at a time.
 - **Internal microservices.** `go-api` for performance, `python-fastapi` for ML, `rust-axum` for safety — all with the same operational shape (logging, health, shutdown, CI).
@@ -197,9 +197,9 @@ TheoCreate is part of the [usetheo](https://usetheo.dev) workflow.
 | 1 | **TheoCode** | Autonomous coding agent (CLI + Desktop). Writes the code in Plan / Code / Infra modes. |
 | 2 | **TheoCreate** *(this)* | Scaffolds the project — TheoKit for Full-Stack AI Agents, or one of 18 multi-language stacks. |
 | 3 | **TheoKit** | The framework where the app lives. Routing, auth, real-time, deploy. |
-| 4 | **Theo PaaS** | Managed deploy target. `theo deploy` → live URL in ~4 minutes. Production. |
+| 4 | **TheoCloud** | Managed deploy target. `theo deploy` → live URL in ~4 minutes. Production. |
 
-TheoCreate is standalone — no commitment to the rest of the stack. Every template deploys to Theo PaaS, Docker, Railway, Fly.io, or your own infra.
+TheoCreate is standalone — no commitment to the rest of the stack. Every template deploys to TheoCloud, Docker, Railway, Fly.io, or your own infra.
 
 ## Mission
 
@@ -216,7 +216,7 @@ TheoCreate is standalone — no commitment to the rest of the stack. Every templ
 - **Production.** 19 templates, 8 styling options, 4 add-on modules, 7 ORMs, package-manager auto-detection, dry-run preview, external GitHub templates — all shipped on npm. Apache-2.0. Validation suite (`scripts/validate-templates.sh`) covers every template.
 - **205 tests across 12 suites** — scaffolding, hooks, error paths, module combinations.
 - **`CLAUDE.md` per scaffolded project.** TheoCreate writes a tailored `CLAUDE.md` (AI assistant instructions) into every scaffolded project — keyed by language, framework, and selected add-ons.
-- **Theo PaaS deploy** — templates ship with `theo.yaml`; `theo deploy` is the canonical PaaS path, wired end-to-end into the production runtime.
+- **TheoCloud deploy** — templates ship with `theo.yaml`; `theo deploy` is the canonical PaaS path, wired end-to-end into the production runtime.
 
 ## License
 

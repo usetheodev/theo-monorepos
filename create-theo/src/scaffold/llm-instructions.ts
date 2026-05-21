@@ -1,20 +1,18 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
 import type { StylingOption } from "../styling.js";
 import type { AddonId } from "../addons.js";
+import type { FileDraft } from "./file-draft.js";
 
-interface LLMInstructionsOptions {
+export interface LLMInstructionsOptions {
   styling?: StylingOption | null;
   database?: boolean;
   addons?: AddonId[];
 }
 
-export function writeLLMInstructions(
-  targetDir: string,
+export function generateLLMDrafts(
   template: TemplateInfo,
   options: LLMInstructionsOptions,
-): void {
+): FileDraft[] {
   const sections: string[] = [];
 
   sections.push(buildHeader(template));
@@ -44,10 +42,13 @@ export function writeLLMInstructions(
   sections.push(buildDeploySection());
   sections.push(buildRules());
 
-  fs.writeFileSync(
-    path.join(targetDir, "CLAUDE.md"),
-    sections.join("\n"),
-  );
+  return [
+    {
+      kind: "text",
+      path: "CLAUDE.md",
+      content: sections.join("\n"),
+    },
+  ];
 }
 
 // --- Section Builders ---

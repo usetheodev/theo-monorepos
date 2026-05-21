@@ -6,32 +6,24 @@ import degit from "degit";
 import type { TemplateInfo } from "../templates.js";
 import { getInstallCommand, type PackageManager } from "../packageManager.js";
 import { TemplateNotFoundError, DependencyInstallError } from "../errors.js";
-import { PLACEHOLDER, TEXT_EXTENSIONS, verboseLog, type ScaffoldOptions } from "./types.js";
-import { applyStyling } from "./styling.js";
-import { applyDatabase } from "./database.js";
-import { applyRedis } from "./redis.js";
-import { applyAuth, applyAuthOAuth } from "./auth.js";
-import { applyQueue } from "./queue.js";
-import { writeInfraFiles } from "./infrastructure.js";
-import { writeCI } from "./ci.js";
-import { writeLLMInstructions } from "./llm-instructions.js";
+import { PLACEHOLDER, verboseLog, type ScaffoldOptions } from "./types.js";
+import type { FileDraft, DependencyDraft } from "./file-draft.js";
+import { generateStylingDrafts } from "./styling.js";
+import { generateDatabaseDrafts } from "./database.js";
+import { generateRedisDrafts } from "./redis.js";
+import { generateAuthDrafts, generateAuthOAuthDrafts } from "./auth.js";
+import { generateQueueDrafts } from "./queue.js";
+import { generateInfraDrafts } from "./infrastructure.js";
+import { generateCIDrafts } from "./ci.js";
+import { generateLLMDrafts } from "./llm-instructions.js";
+import { resolveDependencies } from "./resolve-dependencies.js";
+import { validateDrafts } from "./validators.js";
+import { writeDrafts } from "./writer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function scaffold(options: ScaffoldOptions): void {
-  const {
-    projectName,
-    template,
-    targetDir,
-    styling,
-    database,
-    addons = [],
-    skipInstall,
-    skipGit,
-    verbose,
-  } = options;
-
+function resolveTemplatesRoot(template: TemplateInfo): string {
   const templatesRoot = path.resolve(
     __dirname,
     "..",
@@ -44,51 +36,96 @@ export function scaffold(options: ScaffoldOptions): void {
     throw new TemplateNotFoundError(template.id, templatesRoot);
   }
 
-  verboseLog(verbose, `Copying template ${template.id} from ${templatesRoot}`);
-  copyDir(templatesRoot, targetDir, projectName);
+  return templatesRoot;
+}
 
+function collectDrafts(
+  options: ScaffoldOptions,
+  templatesRoot: string,
+): FileDraft[] {
+  const { template, styling, database, addons = [] } = options;
+
+  const drafts: FileDraft[] = [];
+
+  // Template copy
+  drafts.push({ kind: "copy-dir", srcDir: templatesRoot, destPrefix: "" });
+
+  // Addons
   if (styling) {
-    verboseLog(verbose, `Applying styling: ${styling.name}`);
-    applyStyling(targetDir, template, styling);
+    drafts.push(...generateStylingDrafts(template, styling, templatesRoot));
   }
 
   if (database) {
-    verboseLog(verbose, `Applying database layer: ${template.language}`);
-    applyDatabase(targetDir, template);
+    drafts.push(...generateDatabaseDrafts(template));
   }
 
   if (addons.includes("redis")) {
-    verboseLog(verbose, "Applying addon: redis");
-    applyRedis(targetDir, template);
+    drafts.push(...generateRedisDrafts(template));
   }
   if (addons.includes("auth-jwt")) {
-    verboseLog(verbose, "Applying addon: auth-jwt");
-    applyAuth(targetDir, template);
+    drafts.push(...generateAuthDrafts(template));
   }
   if (addons.includes("auth-oauth")) {
-    verboseLog(verbose, "Applying addon: auth-oauth");
-    applyAuthOAuth(targetDir, template);
+    drafts.push(...generateAuthOAuthDrafts(template));
   }
   if (addons.includes("queue")) {
-    verboseLog(verbose, "Applying addon: queue");
-    applyQueue(targetDir, template);
+    drafts.push(...generateQueueDrafts(template));
   }
 
-  // Write combined docker-compose and env files
+  // Infrastructure (docker-compose, .env)
   const needsRedis = addons.includes("redis") || addons.includes("queue");
   const hasAuthJwt = addons.includes("auth-jwt");
   const hasAuthOAuth = addons.includes("auth-oauth");
   if (database || needsRedis || hasAuthJwt || hasAuthOAuth) {
-    verboseLog(verbose, "Writing infrastructure files (docker-compose, .env)");
-    writeInfraFiles(targetDir, !!database, needsRedis, hasAuthJwt, hasAuthOAuth);
+    drafts.push(
+      ...generateInfraDrafts(!!database, needsRedis, hasAuthJwt, hasAuthOAuth),
+    );
   }
 
-  verboseLog(verbose, "Writing CI workflow");
-  writeCI(targetDir, template);
+  // CI and LLM instructions (always)
+  drafts.push(...generateCIDrafts(template));
+  drafts.push(
+    ...generateLLMDrafts(template, { styling, database, addons }),
+  );
 
-  verboseLog(verbose, "Writing LLM instructions (CLAUDE.md)");
-  writeLLMInstructions(targetDir, template, { styling, database, addons });
+  return drafts;
+}
 
+export function scaffold(options: ScaffoldOptions): void {
+  const { projectName, targetDir, skipInstall, skipGit, verbose, template } =
+    options;
+
+  const templatesRoot = resolveTemplatesRoot(template);
+
+  verboseLog(verbose, `Copying template ${template.id} from ${templatesRoot}`);
+
+  // 1. Collect all drafts
+  const drafts = collectDrafts(options, templatesRoot);
+
+  // 2. Resolve dependencies
+  const depDrafts = drafts.filter(
+    (d): d is DependencyDraft => d.kind === "dependency",
+  );
+  const resolved = resolveDependencies(depDrafts);
+  if (resolved.conflicts.length > 0) {
+    for (const c of resolved.conflicts) {
+      verboseLog(
+        verbose,
+        `Dependency conflict in ${c.file}: ${c.key} (${c.sourceA}: ${c.versionA} vs ${c.sourceB}: ${c.versionB})`,
+      );
+    }
+  }
+
+  // 3. Validate
+  const errors = validateDrafts(drafts, options);
+  for (const e of errors) {
+    verboseLog(verbose, `Validation warning: ${e.message}`);
+  }
+
+  // 4. Write to disk
+  writeDrafts(targetDir, projectName, drafts, resolved);
+
+  // 5. Post-write steps
   if (!skipGit) {
     verboseLog(verbose, "Initializing git repository");
     initGit(targetDir);
@@ -97,58 +134,6 @@ export function scaffold(options: ScaffoldOptions): void {
   if (!skipInstall && template.language === "node") {
     installNodeDeps(targetDir);
   }
-}
-
-function copyDir(src: string, dest: string, projectName: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === "package-lock.json") continue;
-      const destPath = path.join(dest, entry.name);
-      copyDir(srcPath, destPath, projectName);
-    } else {
-      const destName =
-        entry.name === "gitignore"
-          ? ".gitignore"
-          : entry.name === "dockerignore"
-            ? ".dockerignore"
-            : entry.name;
-      const destPath = path.join(dest, destName);
-      copyFile(srcPath, destPath, projectName);
-    }
-  }
-}
-
-function copyFile(src: string, dest: string, projectName: string): void {
-  const ext = path.extname(dest);
-  const basename = path.basename(dest);
-
-  if (isTextFile(ext, basename)) {
-    const content = fs.readFileSync(src, "utf-8");
-    fs.writeFileSync(dest, content.replaceAll(PLACEHOLDER, projectName));
-  } else {
-    fs.copyFileSync(src, dest);
-  }
-}
-
-function isTextFile(ext: string, basename: string): boolean {
-  return (
-    TEXT_EXTENSIONS.has(ext) ||
-    TEXT_EXTENSIONS.has("." + basename) ||
-    basename === "gitignore" ||
-    basename === ".prettierrc" ||
-    basename === "Dockerfile" ||
-    basename === "Procfile" ||
-    basename === "Makefile" ||
-    basename === "Gemfile" ||
-    basename === ".rubocop.yml" ||
-    basename === "Rakefile" ||
-    basename === "Procfile" ||
-    basename === "dockerignore"
-  );
 }
 
 export async function scaffoldExternal(
@@ -194,39 +179,42 @@ export async function scaffoldExternal(
 }
 
 export function dryRunScaffold(options: ScaffoldOptions): string[] {
-  const { template, styling, database, addons = [] } = options;
+  const { template } = options;
 
-  const templatesRoot = path.resolve(__dirname, "..", "..", "templates", template.id);
-  if (!fs.existsSync(templatesRoot)) {
-    throw new TemplateNotFoundError(template.id, templatesRoot);
+  const templatesRoot = resolveTemplatesRoot(template);
+
+  const drafts = collectDrafts(options, templatesRoot);
+
+  const files: string[] = [];
+  for (const draft of drafts) {
+    if (draft.kind === "copy-dir") {
+      files.push(...collectFiles(draft.srcDir, draft.destPrefix));
+    } else if (draft.kind === "text") {
+      files.push(draft.path);
+    } else if (draft.kind === "copy-file") {
+      files.push(draft.destPath);
+    }
+    // DependencyDrafts modify existing files, don't add new paths
   }
 
-  const files = collectFiles(templatesRoot, "");
-
-  if (styling) files.push("(styling files)");
-  if (database) files.push("prisma/schema.prisma", "src/lib/db.js", ".env", ".env.example", "docker-compose.yml");
-  if (addons.includes("redis")) files.push("src/lib/redis.js");
-  if (addons.includes("auth-jwt")) files.push("src/middleware/auth.js");
-  if (addons.includes("auth-oauth")) files.push("src/middleware/oauth.js");
-  if (addons.includes("queue")) files.push("src/lib/queue.js");
-  files.push(".github/workflows/ci.yml");
-  files.push("CLAUDE.md");
-
-  return files.sort();
+  return [...new Set(files)].sort();
 }
 
 function collectFiles(dir: string, prefix: string): string[] {
   const files: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name === "package-lock.json") continue;
+    if (entry.name === "node_modules" || entry.name === "package-lock.json")
+      continue;
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       files.push(...collectFiles(path.join(dir, entry.name), rel));
     } else {
       const name =
-        entry.name === "gitignore" ? ".gitignore" :
-        entry.name === "dockerignore" ? ".dockerignore" :
-        entry.name;
+        entry.name === "gitignore"
+          ? ".gitignore"
+          : entry.name === "dockerignore"
+            ? ".dockerignore"
+            : entry.name;
       files.push(prefix ? `${prefix}/${name}` : name);
     }
   }
@@ -241,7 +229,10 @@ function initGit(dir: string): void {
   }
 }
 
-export function installNodeDeps(dir: string, pm: PackageManager = "npm"): void {
+export function installNodeDeps(
+  dir: string,
+  pm: PackageManager = "npm",
+): void {
   const args = getInstallCommand(pm);
   const cmd = `${pm} ${args.join(" ")}`;
   try {

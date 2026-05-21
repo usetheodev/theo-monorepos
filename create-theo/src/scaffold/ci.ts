@@ -1,13 +1,16 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { TemplateInfo } from "../templates.js";
+import type { FileDraft } from "./file-draft.js";
 
 // --- CI Layer ---
 
-export function writeCI(targetDir: string, template: TemplateInfo): void {
-  const workflowDir = path.join(targetDir, ".github", "workflows");
-  fs.mkdirSync(workflowDir, { recursive: true });
-  fs.writeFileSync(path.join(workflowDir, "ci.yml"), buildCIWorkflow(template));
+export function generateCIDrafts(template: TemplateInfo): FileDraft[] {
+  return [
+    {
+      kind: "text",
+      path: ".github/workflows/ci.yml",
+      content: buildCIWorkflow(template),
+    },
+  ];
 }
 
 function buildCIWorkflow(template: TemplateInfo): string {

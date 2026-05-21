@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <em>The scaffold verb of <strong>Chat. Build. Deploy.</strong> — chat with TheoCode, scaffold here, ship on Theo PaaS. Multi-language, multi-runtime, no vendor lock-in.</em>
+  <em>The scaffold verb of <strong>Chat. Build. Deploy.</strong> — chat with TheoCode, scaffold here, ship on TheoCloud. Multi-language, multi-runtime, no vendor lock-in.</em>
 </p>
 
 <p align="center">
@@ -39,7 +39,7 @@ You pick a language. You pick a stack. You get a project — with the things eve
 ## What you'd ship
 
 - **A real backend, in any language.** Pick Go, Python, Rust, or Java for the team's strengths. Pick Node for shared types with the frontend. TheoCreate doesn't force TypeScript to get nice scaffolding.
-- **A multi-tenant SaaS in a weekend.** `monorepo-turbo` (Express + Next.js) or `monorepo-go` (Go workspaces). Auth, queue, Postgres — three flags. Deploy to Theo PaaS in 4 minutes.
+- **A multi-tenant SaaS in a weekend.** `monorepo-turbo` (Express + Next.js) or `monorepo-go` (Go workspaces). Auth, queue, Postgres — three flags. Deploy to TheoCloud in 4 minutes.
 - **An API for your AI agent.** `node-fastify` + `--add auth-jwt,queue` and you have a job-queue-backed API the agent can hit. Pair with TheoKit for the frontend surface.
 - **A migration off a 2022 starter.** Modern toolchain — Next.js 16, Tailwind v4, ESLint flat config, strict TypeScript. Replace one file at a time.
 - **Internal microservices.** `go-api` for performance, `python-fastapi` for ML, `rust-axum` for safety — all with the same operational shape (logging, health, shutdown, CI).
@@ -447,7 +447,7 @@ Honest claims only.
 - **Production.** 19 templates, 8 styling options, 4 add-on modules, 7 ORMs, package-manager auto-detection, dry-run preview, external GitHub templates — all shipped on npm. Apache-2.0. Validation suite (`scripts/validate-templates.sh`) covers every template.
 - **205 tests across 12 suites** — scaffolding, hooks, error paths, module combinations.
 - **`CLAUDE.md` per scaffolded project.** TheoCreate writes a tailored `CLAUDE.md` (AI assistant instructions) into every scaffolded project — keyed by language, framework, and selected addons.
-- **Theo PaaS deploy** — templates ship with `theo.yaml`; `theo deploy` is the canonical PaaS path. Theo PaaS itself is pre-release.
+- **TheoCloud deploy** — templates ship with `theo.yaml`; `theo deploy` is the canonical PaaS path. TheoCloud itself is pre-release.
 
 ## License
 

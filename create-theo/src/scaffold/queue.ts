@@ -1,42 +1,37 @@
-import fs from "node:fs";
-import path from "node:path";
+import type { FileDraft } from "./file-draft.js";
 import type { TemplateInfo } from "../templates.js";
-import { readPackageJson } from "./types.js";
 
-export function applyQueue(targetDir: string, template: TemplateInfo): void {
+export function generateQueueDrafts(template: TemplateInfo): FileDraft[] {
   switch (template.language) {
     case "node":
-      applyQueueNode(targetDir, template);
-      break;
+      return generateQueueNodeDrafts(template);
     case "go":
-      applyQueueGo(targetDir);
-      break;
+      return generateQueueGoDrafts();
     case "python":
-      applyQueuePython(targetDir);
-      break;
+      return generateQueuePythonDrafts();
     case "php":
-      applyQueuePhp(targetDir);
-      break;
+      return generateQueuePhpDrafts();
+    default:
+      return [];
   }
 }
 
-function applyQueueNode(targetDir: string, template: TemplateInfo): void {
-  const pkgPath = path.join(targetDir, "package.json");
-  const pkg = readPackageJson(pkgPath);
-  pkg.dependencies = {
-    ...(pkg.dependencies as Record<string, string>),
-    bullmq: "^5.0.0",
-  };
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+function generateQueueNodeDrafts(template: TemplateInfo): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  const libDir = path.join(targetDir, "src", "lib");
-  fs.mkdirSync(libDir, { recursive: true });
+  drafts.push({
+    kind: "dependency",
+    target: "package.json",
+    deps: { bullmq: "^5.0.0" },
+    source: "queue",
+  });
 
   const isTypeScript = template.id === "node-nestjs";
   if (isTypeScript) {
-    fs.writeFileSync(
-      path.join(libDir, "queue.ts"),
-      `import { Queue, Worker, type Processor } from "bullmq";
+    drafts.push({
+      kind: "text",
+      path: "src/lib/queue.ts",
+      content: `import { Queue, Worker, type Processor } from "bullmq";
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -51,11 +46,12 @@ export function createWorker(name: string, processor: Processor) {
 
 export { connection };
 `,
-    );
+    });
   } else {
-    fs.writeFileSync(
-      path.join(libDir, "queue.js"),
-      `const { Queue, Worker } = require("bullmq");
+    drafts.push({
+      kind: "text",
+      path: "src/lib/queue.js",
+      content: `const { Queue, Worker } = require("bullmq");
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -70,22 +66,26 @@ function createWorker(name, processor) {
 
 module.exports = { defaultQueue, createWorker, connection };
 `,
-    );
+    });
   }
+
+  return drafts;
 }
 
-function applyQueueGo(targetDir: string): void {
-  const goModPath = path.join(targetDir, "go.mod");
-  let goMod = fs.readFileSync(goModPath, "utf-8");
-  goMod += `\nrequire github.com/hibiken/asynq v0.24.1\n`;
-  fs.writeFileSync(goModPath, goMod);
+function generateQueueGoDrafts(): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  const queueDir = path.join(targetDir, "internal", "queue");
-  fs.mkdirSync(queueDir, { recursive: true });
+  drafts.push({
+    kind: "dependency",
+    target: "go.mod",
+    appendText: `\nrequire github.com/hibiken/asynq v0.24.1\n`,
+    source: "queue",
+  });
 
-  fs.writeFileSync(
-    path.join(queueDir, "queue.go"),
-    `package queue
+  drafts.push({
+    kind: "text",
+    path: "internal/queue/queue.go",
+    content: `package queue
 
 import (
 \t"os"
@@ -109,11 +109,12 @@ func Enqueue(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error) {
 \treturn Client.Enqueue(task, opts...)
 }
 `,
-  );
+  });
 
-  fs.writeFileSync(
-    path.join(queueDir, "worker.go"),
-    `package queue
+  drafts.push({
+    kind: "text",
+    path: "internal/queue/worker.go",
+    content: `package queue
 
 import (
 \t"os"
@@ -135,11 +136,12 @@ func NewWorker(mux *asynq.ServeMux) *asynq.Server {
 \treturn srv
 }
 `,
-  );
+  });
 
-  fs.writeFileSync(
-    path.join(queueDir, "tasks.go"),
-    `package queue
+  drafts.push({
+    kind: "text",
+    path: "internal/queue/tasks.go",
+    content: `package queue
 
 import (
 \t"context"
@@ -172,18 +174,25 @@ func HandleExampleTask(ctx context.Context, t *asynq.Task) error {
 \treturn nil
 }
 `,
-  );
+  });
+
+  return drafts;
 }
 
-function applyQueuePython(targetDir: string): void {
-  const reqPath = path.join(targetDir, "requirements.txt");
-  let reqs = fs.readFileSync(reqPath, "utf-8");
-  reqs += "arq>=0.26.0\n";
-  fs.writeFileSync(reqPath, reqs);
+function generateQueuePythonDrafts(): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  fs.writeFileSync(
-    path.join(targetDir, "queue_worker.py"),
-    `import asyncio
+  drafts.push({
+    kind: "dependency",
+    target: "requirements.txt",
+    appendText: "arq>=0.26.0\n",
+    source: "queue",
+  });
+
+  drafts.push({
+    kind: "text",
+    path: "queue_worker.py",
+    content: `import asyncio
 import os
 
 from arq import create_pool
@@ -201,11 +210,12 @@ class WorkerSettings:
         os.getenv("REDIS_URL", "redis://localhost:6379")
     )
 `,
-  );
+  });
 
-  fs.writeFileSync(
-    path.join(targetDir, "queue_client.py"),
-    `import os
+  drafts.push({
+    kind: "text",
+    path: "queue_client.py",
+    content: `import os
 
 from arq import create_pool
 from arq.connections import RedisSettings
@@ -222,27 +232,28 @@ async def get_pool():
 async def enqueue(pool, task_name: str, *args, **kwargs):
     return await pool.enqueue_job(task_name, *args, **kwargs)
 `,
-  );
+  });
+
+  return drafts;
 }
 
-function applyQueuePhp(targetDir: string): void {
-  const composerPath = path.join(targetDir, "composer.json");
-  const composer = JSON.parse(fs.readFileSync(composerPath, "utf-8"));
+function generateQueuePhpDrafts(): FileDraft[] {
+  const drafts: FileDraft[] = [];
 
-  composer.require = {
-    ...composer.require,
-    "symfony/messenger": "^7.0",
-    "symfony/redis-messenger": "^7.0",
-  };
+  drafts.push({
+    kind: "dependency",
+    target: "composer.json",
+    deps: {
+      "symfony/messenger": "^7.0",
+      "symfony/redis-messenger": "^7.0",
+    },
+    source: "queue",
+  });
 
-  fs.writeFileSync(composerPath, JSON.stringify(composer, null, 2) + "\n");
-
-  const messageDir = path.join(targetDir, "src", "Message");
-  fs.mkdirSync(messageDir, { recursive: true });
-
-  fs.writeFileSync(
-    path.join(messageDir, "ExampleMessage.php"),
-    `<?php
+  drafts.push({
+    kind: "text",
+    path: "src/Message/ExampleMessage.php",
+    content: `<?php
 
 declare(strict_types=1);
 
@@ -255,11 +266,12 @@ class ExampleMessage
     ) {}
 }
 `,
-  );
+  });
 
-  fs.writeFileSync(
-    path.join(messageDir, "ExampleHandler.php"),
-    `<?php
+  drafts.push({
+    kind: "text",
+    path: "src/Message/ExampleHandler.php",
+    content: `<?php
 
 declare(strict_types=1);
 
@@ -273,5 +285,7 @@ class ExampleHandler
     }
 }
 `,
-  );
+  });
+
+  return drafts;
 }

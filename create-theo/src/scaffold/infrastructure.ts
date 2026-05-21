@@ -1,15 +1,14 @@
-import fs from "node:fs";
-import path from "node:path";
+import type { FileDraft } from "./file-draft.js";
 
 // --- Infrastructure Files (docker-compose + env) ---
 
-export function writeInfraFiles(
-  targetDir: string,
+export function generateInfraDrafts(
   hasDatabase: boolean,
   hasRedis: boolean,
   hasAuthJwt = false,
   hasAuthOAuth = false,
-): void {
+): FileDraft[] {
+  const drafts: FileDraft[] = [];
   const envVars: Record<string, string> = {};
   const services: string[] = [];
   const volumes: string[] = [];
@@ -60,28 +59,22 @@ export function writeInfraFiles(
     envVars.OIDC_CLIENT_SECRET = "your-client-secret";
   }
 
-  // Write docker-compose.yml
-  if (services.length === 0) {
-    // Auth only — no docker services, just env files
-    const envContent =
-      Object.entries(envVars)
-        .map(([k, v]) => `${k}="${v}"`)
-        .join("\n") + "\n";
-    fs.writeFileSync(path.join(targetDir, ".env"), envContent);
-    fs.writeFileSync(path.join(targetDir, ".env.example"), envContent);
-    return;
+  // Docker-compose (only if there are services)
+  if (services.length > 0) {
+    let compose = "services:\n" + services.join("\n\n") + "\n";
+    if (volumes.length > 0) {
+      compose += "\nvolumes:\n" + volumes.join("\n") + "\n";
+    }
+    drafts.push({ kind: "text", path: "docker-compose.yml", content: compose });
   }
-  let compose = "services:\n" + services.join("\n\n") + "\n";
-  if (volumes.length > 0) {
-    compose += "\nvolumes:\n" + volumes.join("\n") + "\n";
-  }
-  fs.writeFileSync(path.join(targetDir, "docker-compose.yml"), compose);
 
-  // Write .env and .env.example
+  // .env and .env.example
   const envContent =
     Object.entries(envVars)
       .map(([k, v]) => `${k}="${v}"`)
       .join("\n") + "\n";
-  fs.writeFileSync(path.join(targetDir, ".env"), envContent);
-  fs.writeFileSync(path.join(targetDir, ".env.example"), envContent);
+  drafts.push({ kind: "text", path: ".env", content: envContent });
+  drafts.push({ kind: "text", path: ".env.example", content: envContent });
+
+  return drafts;
 }
