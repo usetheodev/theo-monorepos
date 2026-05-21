@@ -6,3 +6,4 @@ apps:
     path: .
     framework: nextjs
     type: frontend
+    port: 3000
